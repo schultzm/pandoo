@@ -1,0 +1,3 @@
+input fasta file:	VFDB_core_ariba.fa
+input tsv file:	VFDB_core_ariba.tsv
+genetic_code	11

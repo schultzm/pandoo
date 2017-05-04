@@ -1,0 +1,8 @@
+setup.cfg
+setup.py
+Pandoo/__init__.py
+Pandoo/pandoo_tasks.py
+Pandoo/reformat_vfdb_header.py
+Pandoo/pandoo
+graft Pandoo/CARD
+graft Pandoo/VFDB_core

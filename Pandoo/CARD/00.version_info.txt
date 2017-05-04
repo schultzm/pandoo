@@ -1,0 +1,27 @@
+ARIBA run with this command:
+/home/linuxbrew/.linuxbrew/bin/ariba prepareref prepareref -f CARD_database.fa -m CARD_database.tsv CARD
+from this directory: /home/schultzm/scripts/schultzm/development/pando_ruffus
+
+ARIBA version: 2.6.1
+
+External dependencies:
+bowtie2	2.2.9	/home/linuxbrew/.linuxbrew/bin/bowtie2
+cdhit	4.6	/home/linuxbrew/.linuxbrew/bin/cd-hit-est
+nucmer	3.1	/home/linuxbrew/.linuxbrew/bin/nucmer
+
+External dependencies OK: True
+
+Python version:
+3.5.2 (default, Nov  7 2016, 09:25:32) 
+[GCC 5.3.0]
+
+Python packages:
+ariba	2.6.1	/home/linuxbrew/.linuxbrew/opt/python3/lib/python3.5/site-packages/ariba/__init__.py
+dendropy	4.2.0	/home/linuxbrew/.linuxbrew/opt/python3/lib/python3.5/site-packages/dendropy/__init__.py
+pyfastaq	3.14.0	/home/linuxbrew/.linuxbrew/opt/python3/lib/python3.5/site-packages/pyfastaq/__init__.py
+pymummer	0.10.1	/home/linuxbrew/.linuxbrew/opt/python3/lib/python3.5/site-packages/pymummer/__init__.py
+pysam	0.9.1.4	/home/linuxbrew/.linuxbrew/opt/python3/lib/python3.5/site-packages/pysam/__init__.py
+
+Python packages OK: True
+
+Everything looks OK: True

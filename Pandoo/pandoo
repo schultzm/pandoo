@@ -1,0 +1,1097 @@
+#!/usr/bin/env python3
+
+'''
+    Uses python3.
+
+    This script:
+        1. is the entry point for pandoo
+        2. contains the pipeline functions for pandoo.
+    The pipeline purposely does not sit inside a main() function.
+
+    To run it minimally, on the command line do:
+        'pandoo -h'
+
+    pandoo calls functions inside pandoo_tasks.py.
+    There are two subparsers 'input' and 'run'.
+    'pandoo input' is used to generate the input.tab file.
+    'pandoo run' is used to run the pipeline analysis.
+    To get help on any of the subparsers do:
+        'pandoo check'
+        'pandoo input -h'
+        'pandoo run -h'
+        'pandoo merge -h'
+
+
+    Copyright (C) 2017 Mark B Schultz
+    https://github.com/schultzm/
+    email: dr.mark.schultz@gmail.com
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+import argparse
+import ast
+from datetime import datetime
+import glob
+from multiprocessing import Pool, cpu_count
+import os
+import random
+import shlex
+import shutil
+import string
+import sys
+import numpy as np
+import pandas as pd
+import pkg_resources
+from subprocess import Popen, PIPE, STDOUT
+from Pandoo.__init__ import (__version__,
+                      __version_date__,
+                      __author__,
+                      __author_email__,
+                      __github_username__,
+                      __download_url__)
+from Pandoo.pandoo_tasks import (calc_threads,
+                                      get_paths,
+                                      write_pandas_df,
+                                      read_pandas_df,
+                                      create_pandas_df,
+                                      run_abricate,
+                                      run_seqtk_comp,
+                                      run_seqtk_fqchk,
+                                      run_kraken,
+                                      run_mlst,
+                                      run_ariba,
+                                      run_quicktree,
+                                      symlink_contigs,
+                                      run_andi,
+                                      relabel_tree_tips)
+from ruffus import (mkdir,
+                    follows,
+                    files,
+                    jobs_limit,
+                    pipeline_run,
+                    pipeline_printout_graph)
+
+# Set up the arguments parser to deal with the command line input.
+PARSER = argparse.ArgumentParser(prog='pandoo',
+                                 usage='pandoo <command> <options>',
+                                 description='This is a tool for exploring \
+                                 your bacterial genome data.  \
+                                 Given some assemblies and/or \
+                                 paired-end read sets, run a pipeline of \
+                                 software tools to generate an NJ tree from \
+                                 assemblies and a complementary table of \
+                                 metadata/results (contig and read QC, \
+                                 mlst, species ID, resistance genes, \
+                                 virulence factors, plasmid replicon types).')
+PARSER.add_argument('-v', '--version', help='Print version and quit.',
+                    default=False, action='store_true', required=False)
+
+SUBPARSERS = PARSER.add_subparsers(title='Commands',
+                                   help='', metavar='', dest='subparser_name')
+#---------------------------- check ------------------------------------
+SUBPARSER_INPUT = SUBPARSERS.add_parser('check', help='Check pipeline \
+                                        dependencies',
+                                        usage='pandoo check [options]',
+                                        description='Check if the pipeline \
+                                        softwares are in the path and \
+                                        executable.')
+
+#---------------------------- input ------------------------------------
+SUBPARSER_INPUT = SUBPARSERS.add_parser('input', help='Generate input table',
+                                        usage='pandoo input [options]',
+                                        description='Generate the tab-\
+                                        delimited input table.')
+SUBPARSER_INPUT.add_argument('-i', '--isolate_names', help='Path to file \
+                             containing isolate names or IDs, one per line.  \
+                             Default=\'isolates.txt\'. Each line contains an \
+                             isolate ID.', default='isolates.txt',
+                             dest='isolate_names', required=True)
+SUBPARSER_INPUT.add_argument('-a', '--assemblies_dir', help='Root-directory \
+                             containing the assemblies (contigs). Default = \
+                             \'/mnt/seq/MDU/QC/\'', default='/mnt/seq/MDU/QC/',
+                             required=False, dest='assemblies_dir')
+SUBPARSER_INPUT.add_argument('-r', '--readsdir', help='Root-directory \
+                             containing the reads.  Default=\
+                             \'/mnt/seq/MDU/READS/\'',
+                             default='/mnt/seq/MDU/READS/', required=False,
+                             dest='readsdir')
+SUBPARSER_INPUT.add_argument('-n', '--assembly_name', help='Name of assembly \
+                             files.  Default=\'contigs.fa\'.',
+                             default='contigs.fa', required=False,
+                             dest='assembly_name')
+SUBPARSER_INPUT.add_argument('-w', '--wildcard_expansion_off', help='Switch \
+                             off expansion of isolate ID search using \
+                             wildcard? Default is on.', default=True,
+                             action='store_false', required=False,
+                             dest='wildcard_expansion_off')
+SUBPARSER_INPUT.add_argument('-c', '--n_cpus', help='Number of cpus.',
+                           default=cpu_count(), type=int,
+                           required=False, dest='n_cpus')
+
+#---------------------------- run ------------------------------------
+SUBPARSER_RUN = SUBPARSERS.add_parser('run', help='Run the pandoo \
+                                      pipeline', usage='pandoo run ' +
+                                      '[options]', description='Run the \
+                                      pandoo pipeline.')
+SUBPARSER_RUN.add_argument('-i', '--isolate_paths', help='Tab-delimited.  \
+                           No header! Each line contains(\'\\t\'=tab) \
+                           in this order:\
+                           isolate_ID\\tPathToContigs\\tPathToReads1\\t' +
+                           'PathToReads2.\
+                           Missing values leave blank.  Use absolute PATHS.',
+                           required=True, dest='isolate_paths')
+SUBPARSER_RUN.add_argument('-o', '--outdir', help='Output directory.',
+                           required=True, dest='outdir')
+SUBPARSER_RUN.add_argument('-k', '--kraken_db', help='Path to Kraken db.  \
+                           Default=\'/bio/db/kraken//minikraken\'',
+                           default='/bio/db/kraken//minikraken',
+                           required=False,
+                           dest='kraken_db')
+SUBPARSER_RUN.add_argument('-a', '--abricate_dbs', help='Path to Abricate \
+                           dbs, formatted as a python dictionary, \
+                           key = dbname and value = path.  \
+                           Multiple dbs accepted in dictionary.  \
+                           Wrap dictionary in double quotes.  \
+                           Will use packaged \
+                           dbs by default. The dbs should be \
+                           pre-formatted using \
+                           \'makeblastdb\'.  Example for two databases \
+                           (resfinder and plasmidfinder)\
+                           =\"{\'resfinder\': \'/home/tseemann/git/\
+                           abricate/bin/../db\', \'plasmidfinder\': \
+                           \'plasmidfinder\'}\".  Absolute paths required.',
+                           default=None, required=False, dest='abricate_dbs')
+SUBPARSER_RUN.add_argument('-x', '--abricate_coverage_cutoff',
+                           help='Set the minimum-coverage cutoff for \
+                           abricate.  Call the\
+                           gene \'yes\' if greater than this \
+                           value and \'maybe\'\
+                           if less than this value or if more than one \
+                           hit is detected. \
+                           Default=100 percent).', default=100, type=int,
+                           required=False,
+                           dest='abricate_xoff')
+SUBPARSER_RUN.add_argument('-y', '--abricate_identity_cutoff',
+                           help='Set the minimum-identity cutoff for \
+                           abricate.  Only genes with greater than \
+                           or equal to this \
+                           identity will be returned. \
+                           Default=75 percent.', default=75, type=int,
+                           required=False,
+                           dest='abricate_id')
+
+SUBPARSER_RUN.add_argument('-b', '--ariba_dbs', help='Paths to Ariba dbs \
+                           formatted \
+                           as a python dictionary; \
+                           key = dbname and value = path.  \
+                           Multiple dbs accepted in dictionary.  Wrap \
+                           dictionary in double quotes.  \
+                           Will use packaged dbs by \
+                           default.  Example = \"{\'CARD\': \'CARD\'}\"',
+                           default=None, required=False, dest='ariba_dbs')
+SUBPARSER_RUN.add_argument('-c', '--cpus', help='Max number of cpus',
+                           default=cpu_count(), type=int,
+                           required=False, dest='cpus')
+SUBPARSER_RUN.add_argument('-s', '--model_andi', help='Substitution model.\
+                           \'Raw\', \'JC\', or \'Kimura\'. Default=\'JC\'.',
+                           default='JC', required=False, dest='model_andi')
+SUBPARSER_RUN.add_argument('-t', '--infer_tree_on', help='Switch on tree \
+                           inference \
+                           step (uses andi). Default \'False\'', default=False,
+                           action='store_true', required=False,
+                           dest='infer_tree_on')
+SUBPARSER_RUN.add_argument('-r', '--ariba_on', help='Switch on ariba \
+                           minimapping.  \
+                           Default \'False\'', default=False,
+                           action='store_true',
+                           required=False, dest='ariba_on')
+
+#---------------------------- merge ------------------------------------
+SUBPARSER_INPUT = SUBPARSERS.add_parser('merge',help='Merge two metadata \
+                                        tables',
+                                        usage='pandoo merge [options]',
+                                        description='Merge two \
+                                        metadata tables (e.g., LIMS.xlsx + \
+                                        pandoo.csv).',)
+SUBPARSER_INPUT.add_argument('-l', '--path_left_table',
+                             help='Path to \'left\' \
+                             metadata table (e.g., LIMS metadata).',
+                             default=None,
+                             dest='path_left_table', required=True)
+SUBPARSER_INPUT.add_argument('-f', '--format_left_table',
+                             help='Format of left_table.  Either excel \
+                             (\'x\'), tab- (\'t\') or comma- (\'c\') \
+                             delimited.  Default=\'x\' for LIMS metadata \
+                             table.',
+                             default='x',
+                             dest='format_left_table', choices=['x','t','c'],
+                             required=False)
+SUBPARSER_INPUT.add_argument('-s', '--skip_left_rows', help='Number of rows \
+                             to skip in the left_table \
+                             before reaching the header.  Default=4.  \
+                             Skip 4 rows would \
+                             start reading the header on row 5 (NB: 1-based \
+                             indexing).  4 is default \
+                             to facilitate reading of MDU LIMS tables with \
+                             a row 5 header.', type=int,
+                             dest='skip_left_rows', default=4, required=False)
+SUBPARSER_INPUT.add_argument('-r', '--path_right_table', 
+                             help='Path to right_table (e.g., pandoo \
+                             output.csv files).', 
+                             dest='path_right_table', default=None,
+                             required=True)
+SUBPARSER_INPUT.add_argument('-t', '--format_right_table',
+                             help='Format of right_table.  Either excel \
+                             (\'x\'), tab- (\'t\') or comma- (\'c\') \
+                             delimited.  Default=\'c\' for pandoo \
+                             output.csv files',
+                             default='c',
+                             dest='format_right_table', choices=['x','t','c'],
+                             required=False)
+SUBPARSER_INPUT.add_argument('-g', '--skip_right_rows', help='Number of rows \
+                             to skip in the right_table \
+                             before reaching the header.  \
+                             Skip 0 rows would \
+                             start reading the header on row 1 (NB: 1-based \
+                             indexing).  0 is default \
+                             to facilitate reading of pandoo tables \
+                             a first-row header.', type=int,
+                             dest='skip_right_rows', default=0, required=False)
+SUBPARSER_INPUT.add_argument('-x', '--suffix_expansion_off',
+                             help='With suffix expansion on \
+                             (default), then xxxx-xxxxxx is the index \
+                             containing the pandas MultiIndexes of \
+                             xxxx-xxxxxx-1,xxxx-xxxxxx-2,xxxx-xxxxxx-2-a,\
+                             xxxx-xxxxxx-n???).  Switch off if \
+                             MultiIndex is not desired',
+                             action='store_false', required=False,
+                             dest='suffix_expansion_off', default=True)
+ARGS = PARSER.parse_args()
+
+# if hasattr(ARGS, 'func'):
+# #     print(ARGS)
+#     ARGS.func(ARGS)
+# else:
+# PARSER.print_help()
+
+STARTTIME = datetime.now()
+
+VERSION = '\nPando version: ' + __version__ +\
+          '\nVersion date: ' + __version_date__ +\
+          '\nauthors: '+ __author__ +\
+          '\nCorresponding author email: '+ __author_email__ +\
+          '\ngithub: ' + __github_username__ +\
+          '\ndownload url: ' + __download_url__ +'\n'
+
+if ARGS.version:
+    print(VERSION)
+    sys.exit()
+
+if ARGS.subparser_name == 'check':
+    def check_exists(cmd):
+        '''
+        Return the path of an installed package.
+        '''
+        #os.X_OK checks if the file is executable
+        return shutil.which(cmd, mode=os.X_OK)
+    #These softwares are required to run. Ariba is optional as the module
+    #is optionally run.
+    SOFTWARES = ['abricate',
+                 'mlst',
+                 'seqtk',
+                 'andi',
+                 'quicktree',
+                 'ariba',
+                 'kraken']
+                 #readseq (for converting genbanks to fasta)
+
+    for software in sorted(SOFTWARES):
+        path = check_exists(software)
+        if path is not None:
+            print(software.ljust(10)+':\tok\t'+path.ljust(10))
+        else:
+            print('Dependency '+software+' is not installed.  Refer ' +\
+                  'to README at https://pypi.python.org/pypi/Pandoo.')
+
+
+# Code for the 'input' subparser:
+if ARGS.subparser_name == 'input':
+    def get_isolate_ids(id_file):
+        '''
+        Reads in the IDs from the request id_file and returns IDs as a list.
+        ID file must contain only one ID per line.  ID is a folder name.
+        Duplicates and blank lines are also filtered here.
+        '''
+        ids = list(set([_f for _f in [id.rstrip() for id
+                                      in open(id_file, 'r').readlines()]
+                        if _f]))
+        return ids
+
+
+    def assemblies_available(params):
+        '''
+        Of the isolate IDs, find which ones are actually available for 
+        analysis.
+        Sometimes the user may request isolates IDs that have multiple hits
+        in which case the ARGS.wildcard_expansion switch must be used
+        (default on), or the requested IDs may not exist at all.
+        '''
+        idtag, folder, wildcard = params
+        if wildcard:
+            isos = glob.glob(os.path.join(folder, idtag+'*',
+                                          ARGS.assembly_name))
+            if len(isos) == 0:
+                isos = [idtag]
+        else:
+            assembly_path = os.path.join(folder, idtag, ARGS.assembly_name)
+            if os.path.exists(assembly_path):
+                isos = [assembly_path]
+            else:
+                isos = [idtag]
+        return [(os.path.split(os.path.dirname(pathname))[-1],
+                 pathname) for pathname in isos]
+
+
+    def reads_available(idtag, folder):
+        '''
+        Use glob to find the read pairs.
+        '''
+        # Reads is a list. If no reads found, reads is an empty list.
+        reads = '\t'.join(glob.glob(os.path.join(folder, idtag, '*.gz')))
+        if len(reads) == 0:
+            return '\t\t'
+        else:
+            return reads
+
+
+    def generate_table():
+        '''
+        A tab-delimited list goes to stdout (via 'print'):
+        Column 1 - isolate ID
+        Column 2 - path to contigs.fa
+        Column 3 - path to read1.fq.gz
+        Column 4 - path to read2.fq.gz
+        '''
+        # 1. Read in the isolate_IDs from a file.
+        isolates = get_isolate_ids(os.path.abspath(ARGS.isolate_names))
+        # 2. Set the parameters tuples list for the assemblies component to
+        #    use in assemblies_available().
+        params_assemblies_finder = [(ID, os.path.abspath(ARGS.assemblies_dir),
+                                     ARGS.wildcard_expansion_off) for ID
+                                    in isolates]
+        # 3. Set the pool size based on the number of 
+        # CPUs requested and the number of isolates
+        if ARGS.n_cpus <= 0:
+            sys.exit('Number of CPUs must be greater than or equal to 1')
+        if ARGS.n_cpus > cpu_count():
+            n_cpus = cpu_count()
+        else:
+            n_cpus = ARGS.n_cpus
+        if len(params_assemblies_finder) < n_cpus:
+            n_cpus = len(params_assemblies_finder)
+        pool = Pool(n_cpus)
+        print('\n'+str(ARGS.n_cpus)+' CPUs requested.', file=sys.stderr)
+        print('Number of CPUs set to '+str(n_cpus)+'.\n', file=sys.stderr)
+        # 4. Iterate through the results from multiprocesses and print 
+        #    to stdout.
+        results = pool.map(assemblies_available, params_assemblies_finder)
+        results.sort()
+        for result in results:
+            output = []
+            for assembly in result:
+                # Due to list comprehension code in return statement of
+                # assemblies_available(), when assembly not found:
+                # assembly[0] = '', assembly[1] = requested_id
+                # else: assembly[0] = requested_id, assembly[1] = path.
+                if assembly[0] == '':
+                    reads_paths = reads_available(assembly[1],
+                                                  os.path.abspath(ARGS \
+                                                                 .readsdir))
+                    output = [assembly[1], reads_paths]
+                else:
+                    reads_paths = reads_available(assembly[0],
+                                                  os.path.abspath(ARGS \
+                                                                  .readsdir))
+                    output = [assembly[0], assembly[1], reads_paths]
+                print('\t'.join(output))
+    generate_table()
+
+
+# Code for the 'run' subparser:
+if ARGS.subparser_name == 'run':
+    print('\nEntering \'run\' subparser:')
+
+    # If the output directory already exists.
+    if os.path.exists(ARGS.outdir):
+        print('\nOutput directory already exists.')
+
+    def inject_abricate_dbs():
+        '''
+        Determine the paths to the abricate_dbs, dynamically.  Todo: remove
+        hardcoding to abricate resfinder db.
+        '''
+        if ARGS.abricate_dbs is None:
+            args = shlex.split('abricate --list')
+            proc = Popen(args, stderr=PIPE)
+            # Find all the default databases in abricate.
+            dbs = [(i.replace(':','').split()[0], 'default')
+                   for i in proc.stderr.read().decode('UTF-8').split('\n')
+                   if len(i) > 0]
+            # Dump the abricate database called abricate
+            dbs = [j for j in dbs if j[0]!='abricate']
+            db_dict = {key: value for (key, value) in dbs}
+            print('\nAbricate analyses to be run using the following databases:')
+            for key in db_dict.items():
+                print(': '.join(key))
+            return db_dict
+# 
+#             abricate_plasmidfinder = pkg_resources \
+#                                      .resource_filename(__name__,
+#                                                         os.path \
+#                                                         .join('plasmidfinder'))
+#             abricate_resfinder = '/home/tseemann/git/abricate/bin/../db'
+#             abricate_VFDB = pkg_resources \
+#                              .resource_filename(__name__,
+#                                                 os.path \
+#                                                 .join('VFDB'))
+# 
+#             if os.path.isdir(abricate_plasmidfinder) and +\
+#             os.path.isdir(abricate_resfinder) and +\
+#             os.path.isdir(abricate_VFDB):
+#                 dbs = {'plasmidfinder':abricate_plasmidfinder,
+#                         'resfinder': abricate_resfinder,
+#                         'VFDB': abricate_VFDB}
+#                 print('\nAbricate analyses to be run using the following databases:')
+#                 for key in dbs.items():
+#                     print(': '.join(key))
+#                 return dbs
+# 
+#             else:
+#                 sys.exit('Cannot find path to either ' +\
+#                          abricate_plasmidfinder+' or ' +\
+#                          abricate_resfinder+' or ' +\
+#                          abricate_VFDB+'.  Exiting now.')
+        else:
+            try:
+                db_dict = ast.literal_eval(ARGS.abricate_dbs)
+                for key, value in db_dict.items():
+                    db_dict[key] = os.path.abspath(value)
+                return db_dict
+            except:
+                sys.exit('Malformed python dictionary input to ' +
+                         'abricate_dbs. Exiting now.')
+
+    ABRICATE_DBS = inject_abricate_dbs()
+
+    def inject_ariba_dbs():
+        '''
+        Determine the paths to the packaged ariba_dbs, dynamically.
+        '''
+        if ARGS.ariba_dbs is None:
+            ariba_CARD = pkg_resources \
+                         .resource_filename(__name__,
+                                            os.path \
+                                            .join('CARD'))
+            ariba_VFDB = pkg_resources \
+                         .resource_filename(__name__,
+                                            os.path \
+                                            .join('VFDB_core'))
+            if os.path.isdir(ariba_CARD) and \
+            os.path.isdir(ariba_VFDB):
+                dbs = {'CARD': ariba_CARD,
+                       'VFDB_core': ariba_VFDB}
+                print('\nAriba analyses to be run using the following databases:')
+                for key in dbs.items():
+                    print(': '.join(key))
+                return dbs
+
+            else:
+                sys.exit('Cannot find path to either ' +\
+                         ariba_CARD+' or ' +\
+                         ariba_VFDB+'.  Exiting now.')
+        else:
+            try:
+                return ast.literal_eval(ARGS.ariba_dbs)
+            except:
+                sys.exit('Malformed python dictionary input to ' +
+                         'ariba_dbs. Exiting now.')
+
+    if ARGS.ariba_on:
+        ARIBA_DBS = inject_ariba_dbs()
+
+
+    # Set max number of N_CPU to run pipeline.
+    N_CPU = abs(int(ARGS.cpus))
+    if N_CPU < 4:
+        sys.exit('\nA minimum of four CPUs are required to run this \
+                 pipeline.\n' + 'Exiting now\n')
+    if ARGS.cpus > cpu_count():
+        N_CPU = cpu_count()
+    print('\nPipeline is set to run using ' + str(N_CPU) + ' CPU(s)')
+
+    # Read in the input.tab file with paths and isolate names,
+    # exit if duplicates.
+    PATHS = get_paths(ARGS.isolate_paths)
+    if True in PATHS.index.duplicated():
+        print('\nThe following isolates are duplicated in the file \'' +
+              ARGS.isolate_paths+'\':')
+        print('\n'.join(PATHS.index[PATHS.index.duplicated()].values))
+        print('Please remove redundant rows and re-run.')
+        sys.exit('Exiting now.\n')
+
+    # Get out now if the isolate names are misinterpreted as numbers.
+    # Importing as string does not fix in the case of e.g., 14E7
+    breaker_df = []
+    for ind in PATHS.index.values:
+        if isinstance(ind, str):
+            pass
+        else:
+            breaker_df.append(PATHS.loc[ind:ind])
+    if len(breaker_df) > 0:
+        sys.exit(print('The following rows have non-string type index in',
+                       'column 1.  Fix your input.tab file by wrapping these',
+                       'values in quotes or prefixing with a non-numeric', 
+                       'character:\n', pd.concat(breaker_df)))
+
+    # Calculate the number of threads for multithreaded jobs.
+    ISOS = PATHS.index.values
+    N_ISOS = len(ISOS)
+    N_THREADS = calc_threads(N_ISOS, N_CPU)
+    print('Multithread jobs set to run using ' +
+          str(N_THREADS)+' CPU(s) per isolate.')
+    if N_THREADS >= N_CPU:
+        JOB_LIMIT = str(int(N_CPU/N_CPU))
+    else:
+        JOB_LIMIT = str(int((N_CPU)/N_THREADS))
+    print('The number of concurrent multithreaded jobs has been ' +
+          'limited to ' + JOB_LIMIT)
+    if ARGS.ariba_on:
+        ARIBA_JOB_LIMIT = str(N_CPU)
+        if N_ISOS >= N_CPU:
+            ARIBA_JOB_LIMIT = str(int(N_CPU * 0.96))
+        print('The number of concurrent Ariba jobs has been limited to ' +
+              ARIBA_JOB_LIMIT)
+
+    # Convert paths in df to absolute paths.
+    # todo: allow input of .gbk or .gbk.gz in the contigs column
+    for isolate in PATHS.index.values:
+        for header in PATHS.columns.values:
+            if isinstance(PATHS.loc[isolate, header], str):
+                if os.path.exists(os.path.abspath(PATHS.loc[isolate, header])):
+                    PATHS.loc[isolate, header] = \
+                        os.path.abspath(PATHS.loc[isolate,
+                                                  header])
+                else:
+                    PATHS.loc[isolate, header] = np.nan
+
+
+    def shortened_id():
+        '''
+        Create a random 9 character (alphanumeric) tag for use as a tempfile
+        name.
+        '''
+        chars = string.ascii_uppercase + string.digits
+        return ''.join(random.SystemRandom().choice(chars) for _ in range(10))
+
+
+    def temps_to_paths():
+        '''
+        Populate the paths df with a column for temp names
+        '''
+        for iso in PATHS.index.values:
+            if isinstance(PATHS.loc[iso, 'pathContigs'], str):
+                PATHS.loc[iso, 'tempID'] = shortened_id()
+
+
+    temps_to_paths()
+
+    print('\nPaths file (NB: paths not found replaced with NaN):\n')
+    print(PATHS)
+    OUTBASEDIR = os.path.abspath(ARGS.outdir)
+    print('Results will be output to directory:', OUTBASEDIR, sep=' ')
+    ISOLATE_PATHS_BASENAME = os.path.splitext(os.path.basename
+                                             (ARGS.isolate_paths))[0]
+
+
+    def buildpath(*arg):
+        '''
+        Build a path from parameters in *arg.
+        '''
+        return os.path.join(*arg)
+
+
+    # Pipeline starts here:
+    @mkdir([buildpath(OUTBASEDIR, i) for i in PATHS.index.values])
+    def create_results_folders():
+        '''
+        Creates the result directories.
+        '''
+        print('Creating output results directory structure.')
+
+
+    # Create an empty list for reads if there are none or only one.
+    # Combine list into list containing outfile, infile type, and isolate ID.
+    KRAKEN_READS_SP_ID_PARAMS = [[[PATHS.loc[i, 'pathReads1'],
+                                   PATHS.loc[i, 'pathReads2']] if
+                                  pd.notnull(PATHS.loc[i, 'pathReads1']) and
+                                  pd.notnull(PATHS.loc[i, 'pathReads2'])
+                                  else [],
+                                  buildpath(OUTBASEDIR, i, 'kraken_reads.txt'),
+                                  'reads', i, N_THREADS] for i in
+                                 PATHS.index.values]
+    @follows(create_results_folders)
+    @files(KRAKEN_READS_SP_ID_PARAMS)
+    @jobs_limit(JOB_LIMIT)
+    def kraken_reads_sp_id(infiles, outfile, fmt, iso, threads):
+        '''
+        Run kraken on the readsets.
+        '''
+        run_kraken(infiles, outfile, fmt, iso, ARGS.kraken_db, threads)
+
+
+    # Run Kraken on the contigs, use run_kraken from pandoo_tasks.
+    # Create an empty list if there are no contigs.
+    KRAKEN_CONTIGS_SP_ID_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                                    pd.notnull(PATHS.loc[i, 'pathContigs'])
+                                    else [],
+                                    buildpath(OUTBASEDIR, i,
+                                             'kraken_contigs.txt'),
+                                    'contigs', i, N_THREADS] for i in
+                                   PATHS.index.values]
+    @follows(kraken_reads_sp_id)
+    @files(KRAKEN_CONTIGS_SP_ID_PARAMS)
+    @jobs_limit(JOB_LIMIT)
+    def kraken_contigs_sp_id(infile, outfile, fmt, iso, threads):
+        '''
+        Will run Kraken on the infile (contigs).
+        '''
+        run_kraken(infile, outfile, fmt, iso, ARGS.kraken_db, threads)
+
+
+    KRAKEN_RESULTS_PARAMS = [[buildpath(OUTBASEDIR, i, 'kraken_reads.txt'),
+                              buildpath(OUTBASEDIR, i, 'species_id.txt'),
+                              buildpath(OUTBASEDIR, i, 'kraken_contigs.txt'),
+                              # Need to add here the paths to contigs and reads
+                              # if data are completely missing, return
+                              # '' instead of 'indet' as the species name
+                              str(i)] for i in PATHS.index.values]
+    @follows(kraken_contigs_sp_id)
+    @files(KRAKEN_RESULTS_PARAMS)
+    def kraken_sp_id_consensus(infile_reads, outfile, infile_contigs, iso):
+        '''
+        Compare the results of Kraken on the reads and contigs.
+        '''
+        kraken_reads_sp_id_df = read_pandas_df(infile_reads)
+        kraken_contigs_sp_id_df = read_pandas_df(infile_contigs)
+        target_col_reads = 'Sp_krkn_reads_1'
+        target_col_contigs = 'Sp_krkn_contigs_1'
+        if target_col_reads in kraken_reads_sp_id_df.columns and \
+                target_col_contigs in kraken_contigs_sp_id_df:
+            species_reads = kraken_reads_sp_id_df.loc[str(iso),
+                                                      target_col_reads]
+            species_cntgs = kraken_contigs_sp_id_df.loc[str(iso),
+                                                        target_col_contigs]
+
+
+            if species_cntgs == species_reads:
+                species = species_cntgs
+            else:
+                species = 'indet'
+        else:
+            species = 'indet'
+        sp_df = create_pandas_df({'Sp_krkn_ReadAndContigConsensus': species},
+                                 iso)
+        write_pandas_df(outfile, sp_df)
+
+
+    MLST_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                    pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                    buildpath(OUTBASEDIR, i, 'mlst.txt'), i,
+                    buildpath(OUTBASEDIR, i, 'species_id.txt')] for i in
+                   PATHS.index.values]
+    @follows(kraken_sp_id_consensus)
+    @files(MLST_PARAMS)
+    def mlst_contigs(infile, outfile, iso, sp_id_file):
+        '''
+        Runs MLST on the contigs, using the species consensus after Kraken.
+        '''
+        species_df = read_pandas_df(sp_id_file)
+        if iso not in species_df.index:
+            print(str(iso), 'Not found in species_df (pandas imported as int or float not str?).  MLST will now autodetect the scheme.  If this is a problem, delete',
+                   outfile, 'and re-run pandoo.')
+        else:
+            species = species_df.loc[iso].iloc[0]
+            run_mlst(infile, outfile, iso, species)
+
+    ABRICATE_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                        pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                        buildpath(OUTBASEDIR, i, 'abricate_'+key+'.txt'),
+                        buildpath(OUTBASEDIR, i,
+                                  'abricate_'+key+'_simple.txt'),
+                        i, [key, value], ARGS.abricate_xoff,
+                        ARGS.abricate_id]
+                       for i in PATHS.index.values
+                       for key, value in list(ABRICATE_DBS.items())]
+    @follows(kraken_contigs_sp_id)
+    @files(ABRICATE_PARAMS)
+    def abricate_contigs_blast(infile, outfile, outfile_simple, iso,
+                               database, cutoff, identity):
+        '''
+        Runs Abricate on the contigs.
+        '''
+        run_abricate(infile, outfile, outfile_simple, iso, database, cutoff,
+                     identity)
+
+
+    if ARGS.ariba_on:
+        ARIBA_PARAMS = [[[PATHS.loc[i, 'pathReads1'], PATHS.loc[i,
+                                                                'pathReads2']]
+                         if pd.notnull(PATHS.loc[i, 'pathReads1']) and
+                         pd.notnull(PATHS.loc[i, 'pathReads2']) else [],
+                         buildpath(OUTBASEDIR, i, 'ariba_'+key), i,
+                         [key, os.path.abspath(value)],
+                         buildpath(OUTBASEDIR, i)]
+                        for i in PATHS.index.values for key, value in
+                        list(ARIBA_DBS.items())]
+        @follows(kraken_contigs_sp_id)
+        @jobs_limit(ARIBA_JOB_LIMIT)
+        @files(ARIBA_PARAMS)
+        def ariba_reads_minimapping(infiles, outfile, iso, database,
+                                    result_basedir):
+            '''
+            Runs Ariba on the reads.
+            '''
+            run_ariba(infiles, outfile, iso, database, result_basedir)
+
+
+    CONTIG_METRICS_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                              pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                              buildpath(OUTBASEDIR, i, 'yield_contigs.txt'),
+                              str(i)] for i in PATHS.index.values]
+    @follows(kraken_contigs_sp_id)
+    @files(CONTIG_METRICS_PARAMS)
+    def seqtk_comp_contigs(infile, outfile, iso):
+        '''
+        Runs seqtk comp on the contigs.
+        '''
+        run_seqtk_comp(infile, outfile, iso)
+
+
+    READS_METRICS_PARAMS = [[[PATHS.loc[i, 'pathReads1'],
+                              PATHS.loc[i, 'pathReads2']] if
+                             pd.notnull(PATHS.loc[i, 'pathReads1']) and
+                             pd.notnull(PATHS.loc[i, 'pathReads2']) else [],
+                             buildpath(OUTBASEDIR, i, 'yield_reads.txt'),
+                             str(i)] for i in PATHS.index.values]
+    @follows(kraken_contigs_sp_id)
+    @files(READS_METRICS_PARAMS)
+    def seqtk_fqchk_reads(infiles, outfile, iso):
+        '''
+        Runs seqtk fqchk on the reads.
+        '''
+        run_seqtk_fqchk(infiles, outfile, iso)
+
+
+    # Create a list of all the results files for each isolate
+    def write_summary_df_to_file(infile_dfs_list, outfile_df, iso):
+        '''
+        Take a list of dfs, join them and write them to file.
+        '''
+        dfs = [read_pandas_df(infile) for infile in infile_dfs_list if
+               os.path.exists(infile)]
+        df2 = PATHS.loc[iso:iso, ['pathContigs', 'pathReads1',
+                                  'pathReads2']]
+        df3 = df2.fillna('No input file')
+        dfs.append(df3)
+        df4 = pd.concat(dfs, axis=1)
+        write_pandas_df(outfile_df, df4) ## complex outfile
+
+    RESULT_FILES_PER_ISO = [[buildpath(OUTBASEDIR, i),
+                             buildpath(OUTBASEDIR, i, 'summary.csv'),
+                             buildpath(OUTBASEDIR, i, 'summary_simple.csv'),
+                             str(i)] for i in PATHS.index.values]
+    if ARGS.ariba_on:
+        @follows(mlst_contigs, abricate_contigs_blast, seqtk_comp_contigs,
+                 seqtk_fqchk_reads, ariba_reads_minimapping)
+        @files(RESULT_FILES_PER_ISO)
+        # Add the file paths to the summary.csv file.
+        def summarise_intra_iso_results(infolder, outfile,
+                                        outfile_simple, iso):
+            '''
+            Take a list of all the results files for each isolate and 
+            cbind them into on summary.csv pd.df for the isolate.
+            '''
+            print('Gathering results files from '+infolder)
+
+            # Generate summary.csv, including ariba table.
+            infiles_complex = [buildpath(OUTBASEDIR, iso, i) for i in
+                               ['kraken_contigs.txt',
+                                'kraken_reads.txt',
+                                'species_id.txt',
+                                'mlst.txt',
+                                'yield_contigs.txt',
+                                'yield_reads.txt'] +
+                               [buildpath(OUTBASEDIR, iso,
+                                          'abricate_'+key+'.txt')
+                                for key, value in list(ABRICATE_DBS.items())] +
+                               [buildpath(OUTBASEDIR, iso,
+                                          'ariba_'+key+'_summary_melted.txt')
+                                for key, value in list(ARIBA_DBS.items())]]
+            # Requires the os.path.exists(infile) otherwise looks for 
+            # ariba even if reads weren't there for ariba analysis
+            write_summary_df_to_file(infiles_complex, outfile, iso)
+
+            # Generate summary_simple.csv, including ariba table.
+            infiles_simple = [buildpath(OUTBASEDIR, iso, i) for i in
+                              ['kraken_contigs.txt',
+                               'kraken_reads.txt',
+                               'species_id.txt',
+                               'mlst.txt',
+                               'yield_contigs.txt',
+                               'yield_reads.txt'] +
+                              [buildpath(OUTBASEDIR, iso,
+                                         'abricate_'+key+'_simple.txt')
+                               for key, value in list(ABRICATE_DBS.items())] +
+                               [buildpath(OUTBASEDIR, iso,
+                                          'ariba_summary_melted.txt')
+                                for key, value in list(ARIBA_DBS.items())]]
+            write_summary_df_to_file(infiles_simple, outfile_simple, iso)
+
+
+    else:
+        @follows(mlst_contigs, abricate_contigs_blast, seqtk_comp_contigs,
+                 seqtk_fqchk_reads)
+        @files(RESULT_FILES_PER_ISO)
+        # Add the file paths to the summary.csv file.
+        def summarise_intra_iso_results(infolder, outfile, outfile_simple,
+                                        iso):
+            '''
+            Take a list of all the results files for each isolate and cbind
+            them into on summary.csv pd.df for the isolate.
+            '''
+            print('Gathering results files from '+infolder)
+
+            # Generate complex outfile.
+            infiles_complex = [buildpath(OUTBASEDIR, iso, i) for i in
+                       ['kraken_contigs.txt',
+                        'kraken_reads.txt',
+                        'species_id.txt',
+                        'mlst.txt',
+                        'yield_contigs.txt',
+                        'yield_reads.txt'] +
+                       [buildpath(OUTBASEDIR, iso, 'abricate_'+key+'.txt')
+                        for key, value in list(ABRICATE_DBS.items())]]
+            write_summary_df_to_file(infiles_complex, outfile, iso)
+
+            # Generate simple outfile
+            infiles_simple = [buildpath(OUTBASEDIR, iso, i) for i in
+                       ['kraken_contigs.txt',
+                        'kraken_reads.txt',
+                        'species_id.txt',
+                        'mlst.txt',
+                        'yield_contigs.txt',
+                        'yield_reads.txt'] +
+                       [buildpath(OUTBASEDIR, iso,
+                                  'abricate_'+key+'_simple.txt')
+                        for key, value in list(ABRICATE_DBS.items())]]
+            write_summary_df_to_file(infiles_simple, outfile_simple, iso)
+
+
+    # Create a list of all the summary files generated for each isolate.
+    SUMMARYFILE_PER_ISO = [[[buildpath(OUTBASEDIR, i, 'summary.csv')
+                             for i in PATHS.index.values], 
+                            [buildpath(OUTBASEDIR, i, 'summary_simple.csv')
+                             for i in PATHS.index.values]]]
+    @follows(summarise_intra_iso_results)
+    @files(SUMMARYFILE_PER_ISO)
+    def merge_summaries(summaryfiles_list, summaryfiles_list_simple):
+        '''
+        Take a list of all the per-isolate summary.csv files, and cbind them
+        into a single final result csv file, which goes into OUTBASEDIR.
+        '''
+        def join_infiles(infile_list, outfile):
+            '''
+            Take the infiles in infile_list and join them to a single df.
+            '''
+            dfs = [read_pandas_df(infile) for infile in infile_list]
+            # Join along axis 0 (rows).
+            df2 = pd.concat(dfs, axis=0)
+            cols = [i for i in df2.columns.values]
+            df4 = df2.sort_index(axis=1)
+            write_pandas_df(outfile, df4)
+
+        outfile = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
+                            '_metadataAll.csv')
+        outfile_simple = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
+                                   '_metadataAll_simplified.csv')
+         
+
+        join_infiles(summaryfiles_list, outfile)
+        join_infiles(summaryfiles_list_simple, outfile_simple)
+        print('Summary metadata (detailed) written to '+outfile)
+        print('Summary metadata (simplified) written to '+outfile_simple)
+
+
+    N_CONTIG_FILES = PATHS[PATHS.pathContigs.notnull()]
+    if ARGS.infer_tree_on and len(N_CONTIG_FILES) < 3:
+        TREE_OUT_MESSAGE = 'No tree written as less than three isolates ' +\
+                           'had assembly (contig) files'
+        print(TREE_OUT_MESSAGE)
+
+
+    if ARGS.infer_tree_on and len(N_CONTIG_FILES) >= 3:
+        SYMLINK_PARAMS = [[PATHS.loc[i, 'pathContigs'],
+                           buildpath(OUTBASEDIR, i,
+                                     PATHS.loc[i, 'tempID']+'_contigs.fa')] for
+                          i in PATHS.index.values
+                          if pd.notnull(PATHS.loc[i, 'pathContigs'])]
+        @follows(kraken_contigs_sp_id)
+        @files(SYMLINK_PARAMS)
+        def symlink_to_contigs(infile, outfile):
+            '''
+            Create symlinks for contigs files
+            '''
+            symlink_contigs(infile, outfile)
+
+        ANDI_PARAMS = [[[i[1] for i in SYMLINK_PARAMS],
+                        buildpath(OUTBASEDIR,
+                                  'andi_'+ARGS.model_andi+'dist_' +
+                                  ISOLATE_PATHS_BASENAME+'.mat'),
+                        ARGS.model_andi, N_CPU]]
+        @follows(symlink_to_contigs, merge_summaries)
+        @files(ANDI_PARAMS)
+        def andi_contigs_dist_matrix(infiles, outfile, model, ncpu):
+            '''
+            Run andi on the symlinked assemblies
+            '''
+            run_andi(infiles, outfile, model, ncpu)
+            # Fix andi matrix to lower triangle phylip format.
+            df1 = pd.read_csv(outfile, header=None, skiprows=1,
+                              sep=' ', index_col=0)
+            # Old code for removing the upper triangle and diagonals
+            # df1 = df1.where(np.tril(np.ones(df1.shape)).astype(np.bool))
+            # np.fill_diagonal(df1.values, np.nan)
+            # If tempID indices renamed to original name in paths df,
+            # this will result in tip names longer than 10 characters.
+            # Quicktree
+            # fails at 25 characters, so stick with the temp names for now and
+            # replace the temp names after the tree is inferred.  Might be
+            # fixed
+            # if quicktree code is made open-source.
+            # Old code here, which could be re-implemented quicktree code
+            # avail:
+            # df1.rename(index=lambda x: "'"+
+            # PATHS.index.values[np.where(PATHS['tempID']==x)[0][0]]+\
+            # "'", inplace=True)
+            # Wrap names in single quotes
+            df1.rename(index=lambda x: "'"+x+"'", inplace=True)
+            df1.to_csv(outfile, index=True, header=['' for i in
+                                                    df1.columns.values],
+                       index_label=len(df1), sep='\t')
+            # Remove the symlinks:
+            for i in infiles:
+                os.remove(i)
+
+        QUICKTREE_PARAMS = [[ANDI_PARAMS[0][1],
+                             buildpath(OUTBASEDIR,
+                                       buildpath(OUTBASEDIR,
+                                                 ISOLATE_PATHS_BASENAME +
+                                                 '_andi_' +
+                                                 ARGS.model_andi +
+                                                 'dist_nj.tre'))]]
+        @follows(andi_contigs_dist_matrix)
+        @files(QUICKTREE_PARAMS)
+        def infer_nj_quicktree(infile, outfile):
+            '''
+            Read in the andi distance matrix, NaN-populate upper triangle and
+            diagonal of matrix. Input matrix to quicktree.
+            '''
+            tree = run_quicktree(infile, outfile)
+            relabel_tree_tips(tree, PATHS[['tempID']], outfile, infile)
+
+    #     print(help(pipeline_run))
+    pipeline_run(multiprocess=N_CPU)#,
+                 #forcedtorun_tasks=[summarise_intra_iso_results])  
+
+
+    print('\nLength of infile list as string: ' +
+          str(len(', '.join([buildpath(OUTBASEDIR, i)
+                             for i in PATHS.index.values]))))
+
+
+    if len(', '.join([buildpath(OUTBASEDIR, i)
+                      for i in PATHS.index.values])) < 16000:
+        pipeline_printout_graph(buildpath(OUTBASEDIR, 'flowchart.svg'))
+
+
+    if len(', '.join([buildpath(OUTBASEDIR, i)
+                      for i in PATHS.index.values])) >= 16000:
+        print('Too many input files to generate a flowchart.\n' +
+              'Run with less isolates and the same options ' +
+              'to the get the image.')
+
+
+if ARGS.subparser_name == 'merge':
+    def read_metadata_table(table_file, format, nrows):
+        '''
+        Read in a table file using pandas and store as a dataframe.
+        '''
+        if os.path.exists(os.path.abspath(table_file)):
+            if format == 'c':
+                return pd.read_csv(table_file, skiprows=nrows, index_col=0)
+            elif format == 't':
+                return pd.read_table(table_file, skiprows=nrows, index_col=0)
+            if format == 'x':
+                return pd.read_excel(table_file, skiprows=nrows, index_col=0)
+        else:
+            print(os.path.abspath(table_file)+' not found. Exiting now.',
+                  file=sys.stderr)
+
+    def dual_index_table(table):
+        '''
+        Convert the index in the table to dual index.
+        '''
+        if ARGS.suffix_expansion_off:
+            # Arrays contain the split index e.g. xxxx-xxxxxx-1 goes with
+            # xxxx-xxxxxx.
+            arrays = [np.array(['-'.join(i.split('-')[:2])
+                                for i in table.index.values]),
+                      np.array(table.index.values)]
+            table.index = pd.MultiIndex.from_arrays(arrays, names=[u'Left',
+                                                                   u'Right'])
+            return table
+        else:
+            arrays = [np.array([i for i in table.index.values]),
+                      np.array(table.index.values)]
+            table.index = pd.MultiIndex.from_arrays(arrays, names=[u'Left',
+                                                                   u'Right'])
+            return table
+
+    left_table = read_metadata_table(ARGS.path_left_table,
+                                     ARGS.format_left_table,
+                                     ARGS.skip_left_rows)
+    print('\nLEFT--------:\n', left_table, file=sys.stderr)
+    right_table = dual_index_table(read_metadata_table(ARGS.path_right_table,
+                                                       ARGS.format_right_table,
+                                                       ARGS.skip_right_rows))
+    print('\nRIGHT-------:\n',right_table, file=sys.stderr)
+    left_table = left_table.reindex(index=right_table.index, level=0)
+    # Inner join, intersection (the overlap in a Venn diagram)
+    # Outer join, union (the entire Venn diagram)
+    merged_dfs = left_table.join(right_table)
+    print('\nMERGED------:\n', merged_dfs, file=sys.stderr)
+    merged_dfs.to_csv(sys.stdout)
+
+sys.stderr.write('\nDone. Thankyou for you using ' + VERSION +
+           '\nTotal runtime (HRS:MIN:SECS):' +
+           str(datetime.now() - STARTTIME) + '\n🍺\n')

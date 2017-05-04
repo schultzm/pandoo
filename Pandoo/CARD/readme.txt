@@ -1,0 +1,1 @@
+This db is for use with ariba.  It was downloaded on the 1st of February and formatted using the ariba tools 'ariba getref' and 'ariba prepareref'.

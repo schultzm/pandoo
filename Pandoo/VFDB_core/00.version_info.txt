@@ -1,0 +1,28 @@
+ARIBA run with this command:
+/home/linuxbrew/.linuxbrew/bin/ariba prepareref prepareref -f VFDB_core_ariba.fa -m VFDB_core_ariba.tsv VFDB_core_ariba
+from this directory: /home/schultzm/scripts/schultzm/development/pando_ruffus
+
+ARIBA version: 2.7.2
+
+External dependencies:
+bowtie2	2.3.0	/home/linuxbrew/.linuxbrew/bin/bowtie2
+cdhit	4.6	/home/linuxbrew/.linuxbrew/bin/cd-hit-est
+nucmer	3.1	/home/linuxbrew/.linuxbrew/bin/nucmer
+
+External dependencies OK: True
+
+Python version:
+3.5.2 (default, Nov  7 2016, 09:25:32) 
+[GCC 5.3.0]
+
+Python packages:
+ariba	2.7.2	/home/linuxbrew/.linuxbrew/opt/python3/lib/python3.5/site-packages/ariba/__init__.py
+bs4	4.5.3	/home/linuxbrew/.linuxbrew/opt/python3/lib/python3.5/site-packages/bs4/__init__.py
+dendropy	4.2.0	/home/linuxbrew/.linuxbrew/opt/python3/lib/python3.5/site-packages/dendropy/__init__.py
+pyfastaq	3.14.0	/home/linuxbrew/.linuxbrew/opt/python3/lib/python3.5/site-packages/pyfastaq/__init__.py
+pymummer	0.10.2	/home/linuxbrew/.linuxbrew/opt/python3/lib/python3.5/site-packages/pymummer/__init__.py
+pysam	0.10.0	/home/linuxbrew/.linuxbrew/opt/python3/lib/python3.5/site-packages/pysam/__init__.py
+
+Python packages OK: True
+
+Everything looks OK: True
