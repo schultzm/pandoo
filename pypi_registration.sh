@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-git tag 0.1.77
+git tag 0.1.78
 git push --tags
 git add .
 git commit -m 'Commiting under pandoo'
