@@ -52,7 +52,9 @@ import sys
 import numpy as np
 import pandas as pd
 import pkg_resources
+from pathlib import Path
 from subprocess import Popen, PIPE, STDOUT
+from ete3 import Tree
 from Pandoo.__init__ import (__version__,
                       __version_date__,
                       __author__,
@@ -73,6 +75,7 @@ from Pandoo.pandoo_tasks import (calc_threads,
                                       run_quicktree,
                                       symlink_contigs,
                                       run_andi,
+                                      run_mashtree,
                                       relabel_tree_tips)
 from ruffus import (mkdir,
                     follows,
@@ -963,65 +966,94 @@ if ARGS.subparser_name == 'run':
             '''
             symlink_contigs(infile, outfile)
 
-        ANDI_PARAMS = [[[i[1] for i in SYMLINK_PARAMS],
+#         ANDI_PARAMS = [[[i[1] for i in SYMLINK_PARAMS],
+#                         buildpath(OUTBASEDIR,
+#                                   'andi_'+ARGS.model_andi+'dist_' +
+#                                   ISOLATE_PATHS_BASENAME+'.mat'),
+#                         ARGS.model_andi, N_CPU]]
+        MASH_PARAMS = [[[i[1] for i in SYMLINK_PARAMS],
                         buildpath(OUTBASEDIR,
-                                  'andi_'+ARGS.model_andi+'dist_' +
+                                  'mashtree_'+'dist_' +
                                   ISOLATE_PATHS_BASENAME+'.mat'),
-                        ARGS.model_andi, N_CPU]]
+                        buildpath(OUTBASEDIR,
+                                  'mashtree_temp_'+
+                                  ISOLATE_PATHS_BASENAME+'.tre'),
+                        N_CPU]]
+        print(MASH_PARAMS)
         @follows(symlink_to_contigs, merge_summaries)
-        @files(ANDI_PARAMS)
-        def andi_contigs_dist_matrix(infiles, outfile, model, ncpu):
+        @files(MASH_PARAMS)
+        def mashtree(infiles, outfile, treefile, N_CPU):
+            run_mashtree(infiles, outfile, treefile, N_CPU)
+        
+#         def andi_contigs_dist_matrix(infiles, outfile, model, ncpu):
+#             '''
+#             Run andi on the symlinked assemblies
+#             '''
+#             run_andi(infiles, outfile, model, ncpu)
+#             # Fix andi matrix to lower triangle phylip format.
+#             df0 = pd.read_csv(outfile, header=None, skiprows=1,
+#                               sep=' ', index_col=0, iterator=True, chunksize=1000)
+#             df1 = pd.concat(df0)
+#             # Old code for removing the upper triangle and diagonals
+#             # df1 = df1.where(np.tril(np.ones(df1.shape)).astype(np.bool))
+#             # np.fill_diagonal(df1.values, np.nan)
+#             # If tempID indices renamed to original name in paths df,
+#             # this will result in tip names longer than 10 characters.
+#             # Quicktree
+#             # fails at 25 characters, so stick with the temp names for now and
+#             # replace the temp names after the tree is inferred.  Might be
+#             # fixed
+#             # if quicktree code is made open-source.
+#             # Old code here, which could be re-implemented quicktree code
+#             # avail:
+#             # df1.rename(index=lambda x: "'"+
+#             # PATHS.index.values[np.where(PATHS['tempID']==x)[0][0]]+\
+#             # "'", inplace=True)
+#             # Wrap names in single quotes
+#             df1.rename(index=lambda x: "'"+x+"'", inplace=True)
+#             df1.to_csv(outfile, index=True, header=['' for i in
+#                                                     df1.columns.values],
+#                        index_label=len(df1), sep='\t')
+#             # Remove the symlinks:
+#             for i in infiles:
+#                 os.remove(i)
+# 
+        MASHTREE_PARAMS = [[MASH_PARAMS[0][2],
+                            buildpath(OUTBASEDIR,
+                                      'mashtree_'+
+                                      ISOLATE_PATHS_BASENAME+'.tre'),
+                            MASH_PARAMS[0][1]]]
+        print(MASHTREE_PARAMS)
+        @follows(mashtree)
+        @files(MASHTREE_PARAMS)
+        def relabel_mashtree(infile, outfile, distmat):
             '''
-            Run andi on the symlinked assemblies
+            Read in mashtree, rename the tips.
             '''
-            run_andi(infiles, outfile, model, ncpu)
-            # Fix andi matrix to lower triangle phylip format.
-            df1 = pd.read_csv(outfile, header=None, skiprows=1,
-                              sep=' ', index_col=0)
-            # Old code for removing the upper triangle and diagonals
-            # df1 = df1.where(np.tril(np.ones(df1.shape)).astype(np.bool))
-            # np.fill_diagonal(df1.values, np.nan)
-            # If tempID indices renamed to original name in paths df,
-            # this will result in tip names longer than 10 characters.
-            # Quicktree
-            # fails at 25 characters, so stick with the temp names for now and
-            # replace the temp names after the tree is inferred.  Might be
-            # fixed
-            # if quicktree code is made open-source.
-            # Old code here, which could be re-implemented quicktree code
-            # avail:
-            # df1.rename(index=lambda x: "'"+
-            # PATHS.index.values[np.where(PATHS['tempID']==x)[0][0]]+\
-            # "'", inplace=True)
-            # Wrap names in single quotes
-            df1.rename(index=lambda x: "'"+x+"'", inplace=True)
-            df1.to_csv(outfile, index=True, header=['' for i in
-                                                    df1.columns.values],
-                       index_label=len(df1), sep='\t')
-            # Remove the symlinks:
-            for i in infiles:
-                os.remove(i)
+            treestring = Path(infile).read_text()
+            tre = Tree(treestring, format=1)
+            relabel_tree_tips(tre, PATHS[['tempID']], outfile, distmat)
 
-        QUICKTREE_PARAMS = [[ANDI_PARAMS[0][1],
-                             buildpath(OUTBASEDIR,
-                                       buildpath(OUTBASEDIR,
-                                                 ISOLATE_PATHS_BASENAME +
-                                                 '_andi_' +
-                                                 ARGS.model_andi +
-                                                 'dist_nj.tre'))]]
-        @follows(andi_contigs_dist_matrix)
-        @files(QUICKTREE_PARAMS)
-        def infer_nj_quicktree(infile, outfile):
-            '''
-            Read in the andi distance matrix, NaN-populate upper triangle and
-            diagonal of matrix. Input matrix to quicktree.
-            '''
-            tree = run_quicktree(infile, outfile)
-            relabel_tree_tips(tree, PATHS[['tempID']], outfile, infile)
-
+#         QUICKTREE_PARAMS = [[ANDI_PARAMS[0][1],
+#                              buildpath(OUTBASEDIR,
+#                                        buildpath(OUTBASEDIR,
+#                                                  ISOLATE_PATHS_BASENAME +
+#                                                  '_andi_' +
+#                                                  ARGS.model_andi +
+#                                                  'dist_nj.tre'))]]
+#         @follows(andi_contigs_dist_matrix)
+#         @files(QUICKTREE_PARAMS)
+#         def infer_nj_quicktree(infile, outfile):
+#             '''
+#             Read in the andi distance matrix, NaN-populate upper triangle and
+#             diagonal of matrix. Input matrix to quicktree.
+#             '''
+#             tree = run_quicktree(infile, outfile)
+#             relabel_tree_tips(tree, PATHS[['tempID']], outfile, infile)
+# 
     #     print(help(pipeline_run))
-    pipeline_run(multiprocess=N_CPU)#,
-                 #forcedtorun_tasks=[summarise_intra_iso_results])  
+    pipeline_run(multiprocess=N_CPU,
+                 forcedtorun_tasks=[summarise_intra_iso_results])  
 
 
     print('\nLength of infile list as string: ' +

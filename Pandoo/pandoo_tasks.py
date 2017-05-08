@@ -557,7 +557,9 @@ def relabel_tree_tips(tree, dframe, out, matrix):
     df['tempID'].
     '''
     for leaf in tree.traverse():
-        iso = dframe.loc[dframe['tempID'] == leaf.name].index.values
+        # the code .replace('_contigs.fa', '') is only necessary with mashtree
+        # remove for andi
+        iso = dframe.loc[dframe['tempID'] == leaf.name.replace('_contigs.fa', '')].index.values
         if len(iso) > 0:
             leaf.name = iso[0]
     tree.set_outgroup(tree.get_midpoint_outgroup())
@@ -575,17 +577,28 @@ def symlink_contigs(infile, outfile):
     cmd = 'ln -s '+infile+' '+outfile
     os.system(cmd)
 
+def run_mashtree(infiles, outfile, treefile, cpus):
+    infile_list = ' '.join(infiles)
+    cmd = '/home/agoncalves/src/mashtree/bin/mashtree.pl ' +\
+          ' --numcpus '+str(cpus)+' --outmatrix '+outfile +\
+          ' --sort-order random '+infile_list+' > '+treefile
+    os.system(cmd)
 
 def run_andi(infiles, outfile, model, cpus):
     '''
     Run Andi phylo.
-    Todo: if a distance has already been calculated, don't recalculate it on
-    a re-run.
     '''
-    andi_c = 'andi -j -m '+model+' -t ' +\
-             str(cpus)+' '+' '.join(infiles)+' > '+outfile
+    outhandle_name = os.path.join(os.path.split(outfile)[0], 'filenames.txt')
+    with open(outhandle_name, 'w') as outhandle:
+        outhandle.write(' '.join(infiles))
+        print(outhandle_name)
+    # Use xargs to get the list of filenames for andi job,
+    # else the commandline will get flooded
+    andi_c = 'cat '+outhandle_name+ ' | '+ 'xargs andi -j -m '+model+' -t ' +\
+             str(cpus)+' '+' > '+outfile
     print(andi_c)
     os.system(andi_c)
+    #os.remove(outhandle_name)
 
 # From https://github.com/tseemann/mlst/blob/master/db/species_scheme_map.tab
 FORCE_MLST_SCHEME = {"Acinetobacter baumannii": "abaumannii_2",
