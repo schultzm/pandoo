@@ -579,10 +579,17 @@ def symlink_contigs(infile, outfile):
 
 def run_mashtree(infiles, outfile, treefile, cpus):
     infile_list = ' '.join(infiles)
-    cmd = '/home/agoncalves/src/mashtree/bin/mashtree.pl ' +\
+    outhandle_name = os.path.join(os.path.split(outfile)[0], 'filenames.txt')
+    with open(outhandle_name, 'w') as outhandle:
+        relative_paths = [os.path.relpath(i) for i in infiles]
+        outhandle.write(' '.join(relative_paths))
+        print(outhandle_name)
+    cmd = 'cat '+outhandle_name+' | xargs mashtree.pl ' +\
           ' --numcpus '+str(cpus)+' --outmatrix '+outfile +\
-          ' --sort-order random '+infile_list+' > '+treefile
+          ' --sort-order random > '+treefile
+    print(cmd)
     os.system(cmd)
+    os.remove(outhandle_name)
 
 def run_andi(infiles, outfile, model, cpus):
     '''
@@ -590,7 +597,9 @@ def run_andi(infiles, outfile, model, cpus):
     '''
     outhandle_name = os.path.join(os.path.split(outfile)[0], 'filenames.txt')
     with open(outhandle_name, 'w') as outhandle:
-        outhandle.write(' '.join(infiles))
+        relative_paths = [os.path.relpath(i) for i in infiles]
+        print('XXXXX', relative_paths)
+        outhandle.write(' '.join(relative_paths))
         print(outhandle_name)
     # Use xargs to get the list of filenames for andi job,
     # else the commandline will get flooded

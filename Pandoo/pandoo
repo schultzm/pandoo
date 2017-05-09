@@ -979,7 +979,7 @@ if ARGS.subparser_name == 'run':
                                   'mashtree_temp_'+
                                   ISOLATE_PATHS_BASENAME+'.tre'),
                         N_CPU]]
-        print(MASH_PARAMS)
+#         print(MASH_PARAMS)
         @follows(symlink_to_contigs, merge_summaries)
         @files(MASH_PARAMS)
         def mashtree(infiles, outfile, treefile, N_CPU):
@@ -1023,7 +1023,7 @@ if ARGS.subparser_name == 'run':
                                       'mashtree_'+
                                       ISOLATE_PATHS_BASENAME+'.tre'),
                             MASH_PARAMS[0][1]]]
-        print(MASHTREE_PARAMS)
+#         print(MASHTREE_PARAMS)
         @follows(mashtree)
         @files(MASHTREE_PARAMS)
         def relabel_mashtree(infile, outfile, distmat):
