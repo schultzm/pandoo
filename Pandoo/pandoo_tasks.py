@@ -30,6 +30,7 @@ from multiprocessing import cpu_count
 import shlex
 from subprocess import Popen, PIPE
 import sys
+import glob
 from ete3 import Tree
 import numpy as np
 import pandas as pd
@@ -551,21 +552,24 @@ def run_quicktree(infile, outfile):
     return tre
 
 
-def relabel_tree_tips(tree, dframe, out, matrix):
+def relabel_tree_tips(tree, out, matrix):
     '''
     Take a tree, traverse it, swapping out the tip labels with new ones in
     df['tempID'].
     '''
     for leaf in tree.traverse():
+        leaf.name = leaf.name.replace('_contigs.fa', '')
         # the code .replace('_contigs.fa', '') is only necessary with mashtree
         # remove for andi
-        iso = dframe.loc[dframe['tempID'] == leaf.name.replace('_contigs.fa', '')].index.values
-        if len(iso) > 0:
-            leaf.name = iso[0]
+#         iso = dframe.loc[dframe['tempID'] == leaf.name.replace('_contigs.fa', '')].index.values
+#         if len(iso) > 0:
+#             leaf.name = iso[0]
     tree.set_outgroup(tree.get_midpoint_outgroup())
     print(tree)
     print('If tip labels are not as expected, delete ' +
           matrix+' then rerun the analysis')
+    if os.path.exists(out):
+        os.remove(out)
     tree.write(outfile=out, format=1)
     print('Tree file at '+out)
 
@@ -578,7 +582,27 @@ def symlink_contigs(infile, outfile):
     os.system(cmd)
 
 def run_mashtree(infiles, outfile, treefile, cpus):
+    mashtmp = 'tmp_msh'
     infile_list = ' '.join(infiles)
+    # Remove the tsv files from previous runs if they exist.
+    for i in infiles:
+        symlinkfilename = os.path.split(i)[-1]
+        mashouttsv = os.path.join(os.path.split(os.path.split(i)[0])[0],
+                                  mashtmp,
+                                  symlinkfilename+'.msh.tsv')
+        if os.path.exists(mashouttsv):
+            os.remove(mashouttsv)
+# 
+#     # Remove the tree file if it exists.
+#     if os.path.exists(treefile):
+#         os.remove(treefile)
+#     # Remove the distance matrix.mat if it exists.
+#     if os.path.exists(outfile):
+#         os.remove(outfile)
+    for distance_matrix in glob.glob(os.path.join(os.path.split(outfile)[0],
+                                                  'tmp_msh', 'distances.*')):
+        os.remove(distance_matrix)
+    # Outhandle is where the file of filenames will be stored.
     outhandle_name = os.path.join(os.path.split(outfile)[0], 'filenames.txt')
     with open(outhandle_name, 'w') as outhandle:
         relative_paths = [os.path.relpath(i) for i in infiles]
@@ -586,10 +610,13 @@ def run_mashtree(infiles, outfile, treefile, cpus):
         print(outhandle_name)
     cmd = 'cat '+outhandle_name+' | xargs mashtree.pl ' +\
           ' --numcpus '+str(cpus)+' --outmatrix '+outfile +\
-          ' --sort-order random > '+treefile
+          ' --sort-order random --tempdir ' +\
+          os.path.join(os.path.split(outfile)[0], 'tmp_msh')+' > ' +\
+          treefile
     print(cmd)
     os.system(cmd)
-    os.remove(outhandle_name)
+    # Remove the file of filenames.
+#     os.remove(outhandle_name)
 
 def run_andi(infiles, outfile, model, cpus):
     '''

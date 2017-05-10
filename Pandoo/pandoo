@@ -43,6 +43,7 @@ import ast
 from datetime import datetime
 import glob
 from multiprocessing import Pool, cpu_count
+from time import time
 import os
 import random
 import shlex
@@ -209,9 +210,8 @@ SUBPARSER_RUN.add_argument('-s', '--model_andi', help='Substitution model.\
                            \'Raw\', \'JC\', or \'Kimura\'. Default=\'JC\'.',
                            default='JC', required=False, dest='model_andi')
 SUBPARSER_RUN.add_argument('-t', '--infer_tree_on', help='Switch on tree \
-                           inference \
-                           step (uses andi). Default \'False\'', default=False,
-                           action='store_true', required=False,
+                           inference using mashtree.pl. Default \'False\'',
+                           default=False, action='store_true', required=False,
                            dest='infer_tree_on')
 SUBPARSER_RUN.add_argument('-r', '--ariba_on', help='Switch on ariba \
                            minimapping.  \
@@ -312,8 +312,9 @@ if ARGS.subparser_name == 'check':
     SOFTWARES = ['abricate',
                  'mlst',
                  'seqtk',
-                 'andi',
-                 'quicktree',
+#                  'andi',
+#                  'quicktree',
+                 'mashtree.pl',
                  'ariba',
                  'kraken']
                  #readseq (for converting genbanks to fasta)
@@ -955,9 +956,10 @@ if ARGS.subparser_name == 'run':
     if ARGS.infer_tree_on and len(N_CONTIG_FILES) >= 3:
         SYMLINK_PARAMS = [[PATHS.loc[i, 'pathContigs'],
                            buildpath(OUTBASEDIR, i,
-                                     PATHS.loc[i, 'tempID']+'_contigs.fa')] for
+                                     i+'_contigs.fa')] for
                           i in PATHS.index.values
                           if pd.notnull(PATHS.loc[i, 'pathContigs'])]
+#         print(SYMLINK_PARAMS)
         @follows(kraken_contigs_sp_id)
         @files(SYMLINK_PARAMS)
         def symlink_to_contigs(infile, outfile):
@@ -979,11 +981,23 @@ if ARGS.subparser_name == 'run':
                                   'mashtree_temp_'+
                                   ISOLATE_PATHS_BASENAME+'.tre'),
                         N_CPU]]
+        if os.path.exists(MASH_PARAMS[0][1]):
+            with open(MASH_PARAMS[0][1], 'r') as input:
+                firstline = input.readline().replace('_contigs.fa', '') \
+                            .split()[1:]
+                if set(firstline) != set([i for i in PATHS.index.values
+                          if pd.notnull(PATHS.loc[i, 'pathContigs'])]):
+                    os.rename(MASH_PARAMS[0][1],
+                              MASH_PARAMS[0][1].replace('.mat',
+                                                        '_%d.mat') % time())
+
 #         print(MASH_PARAMS)
         @follows(symlink_to_contigs, merge_summaries)
         @files(MASH_PARAMS)
         def mashtree(infiles, outfile, treefile, N_CPU):
+            # Get first line of outfile
             run_mashtree(infiles, outfile, treefile, N_CPU)
+            print('Treefile written to '+treefile)
         
 #         def andi_contigs_dist_matrix(infiles, outfile, model, ncpu):
 #             '''
@@ -1031,8 +1045,10 @@ if ARGS.subparser_name == 'run':
             Read in mashtree, rename the tips.
             '''
             treestring = Path(infile).read_text()
+            print(treestring)
+            print(infile)
             tre = Tree(treestring, format=1)
-            relabel_tree_tips(tre, PATHS[['tempID']], outfile, distmat)
+            relabel_tree_tips(tre, outfile, distmat)
 
 #         QUICKTREE_PARAMS = [[ANDI_PARAMS[0][1],
 #                              buildpath(OUTBASEDIR,
