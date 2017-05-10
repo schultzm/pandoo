@@ -297,7 +297,7 @@ VERSION = '\nPando version: ' + __version__ +\
           '\ndownload url: ' + __download_url__ +'\n'
 
 if ARGS.version:
-    print(VERSION)
+    print(VERSION, file=sys.stderr)
     sys.exit()
 
 if ARGS.subparser_name == 'check':
@@ -322,10 +322,11 @@ if ARGS.subparser_name == 'check':
     for software in sorted(SOFTWARES):
         path = check_exists(software)
         if path is not None:
-            print(software.ljust(10)+':\tok\t'+path.ljust(10))
+            print(software.ljust(10)+':\tok\t'+path.ljust(10), file=sys.stderr)
         else:
             print('Dependency '+software+' is not installed.  Refer ' +\
-                  'to README at https://pypi.python.org/pypi/Pandoo.')
+                  'to README at https://pypi.python.org/pypi/Pandoo.',
+                  file=sys.stderr)
 
 
 # Code for the 'input' subparser:
@@ -433,11 +434,11 @@ if ARGS.subparser_name == 'input':
 
 # Code for the 'run' subparser:
 if ARGS.subparser_name == 'run':
-    print('\nEntering \'run\' subparser:')
+    print('\nEntering \'run\' subparser:', file=sys.stderr)
 
     # If the output directory already exists.
     if os.path.exists(ARGS.outdir):
-        print('\nOutput directory already exists.')
+        print('\nOutput directory already exists.', file=sys.stderr)
 
     def inject_abricate_dbs():
         '''
@@ -454,9 +455,10 @@ if ARGS.subparser_name == 'run':
             # Dump the abricate database called abricate
             dbs = [j for j in dbs if j[0]!='abricate']
             db_dict = {key: value for (key, value) in dbs}
-            print('\nAbricate analyses to be run using the following databases:')
+            print('\nAbricate analyses to be run using the following \
+                  databases:', file=sys.stderr)
             for key in db_dict.items():
-                print(': '.join(key))
+                print(': '.join(key), file=sys.stderr)
             return db_dict
 # 
 #             abricate_plasmidfinder = pkg_resources \
@@ -514,9 +516,10 @@ if ARGS.subparser_name == 'run':
             os.path.isdir(ariba_VFDB):
                 dbs = {'CARD': ariba_CARD,
                        'VFDB_core': ariba_VFDB}
-                print('\nAriba analyses to be run using the following databases:')
+                print('\nAriba analyses to be run using the following \
+                      databases:', file=sys.stderr)
                 for key in dbs.items():
-                    print(': '.join(key))
+                    print(': '.join(key), file=sys.stderr)
                 return dbs
 
             else:
@@ -541,16 +544,18 @@ if ARGS.subparser_name == 'run':
                  pipeline.\n' + 'Exiting now\n')
     if ARGS.cpus > cpu_count():
         N_CPU = cpu_count()
-    print('\nPipeline is set to run using ' + str(N_CPU) + ' CPU(s)')
+    print('\nPipeline is set to run using ' + str(N_CPU) + ' CPU(s)',
+          file=sys.stderr)
 
     # Read in the input.tab file with paths and isolate names,
     # exit if duplicates.
     PATHS = get_paths(ARGS.isolate_paths)
     if True in PATHS.index.duplicated():
         print('\nThe following isolates are duplicated in the file \'' +
-              ARGS.isolate_paths+'\':')
-        print('\n'.join(PATHS.index[PATHS.index.duplicated()].values))
-        print('Please remove redundant rows and re-run.')
+              ARGS.isolate_paths+'\':', file=sys.stderr)
+        print('\n'.join(PATHS.index[PATHS.index.duplicated()].values),
+              file=sys.stderr)
+        print('Please remove redundant rows and re-run.', file=sys.stderr)
         sys.exit('Exiting now.\n')
 
     # Get out now if the isolate names are misinterpreted as numbers.
@@ -565,26 +570,27 @@ if ARGS.subparser_name == 'run':
         sys.exit(print('The following rows have non-string type index in',
                        'column 1.  Fix your input.tab file by wrapping these',
                        'values in quotes or prefixing with a non-numeric', 
-                       'character:\n', pd.concat(breaker_df)))
+                       'character:\n', pd.concat(breaker_df)),
+                       file=sys.stderr)
 
     # Calculate the number of threads for multithreaded jobs.
     ISOS = PATHS.index.values
     N_ISOS = len(ISOS)
     N_THREADS = calc_threads(N_ISOS, N_CPU)
     print('Multithread jobs set to run using ' +
-          str(N_THREADS)+' CPU(s) per isolate.')
+          str(N_THREADS)+' CPU(s) per isolate.', file=sys.stderr)
     if N_THREADS >= N_CPU:
         JOB_LIMIT = str(int(N_CPU/N_CPU))
     else:
         JOB_LIMIT = str(int((N_CPU)/N_THREADS))
     print('The number of concurrent multithreaded jobs has been ' +
-          'limited to ' + JOB_LIMIT)
+          'limited to ' + JOB_LIMIT, file=sys.stderr)
     if ARGS.ariba_on:
         ARIBA_JOB_LIMIT = str(N_CPU)
         if N_ISOS >= N_CPU:
             ARIBA_JOB_LIMIT = str(int(N_CPU * 0.96))
         print('The number of concurrent Ariba jobs has been limited to ' +
-              ARIBA_JOB_LIMIT)
+              ARIBA_JOB_LIMIT, file=sys.stderr)
 
     # Convert paths in df to absolute paths.
     # todo: allow input of .gbk or .gbk.gz in the contigs column
@@ -619,10 +625,12 @@ if ARGS.subparser_name == 'run':
 
     temps_to_paths()
 
-    print('\nPaths file (NB: paths not found replaced with NaN):\n')
-    print(PATHS)
+    print('\nPaths file (NB: paths not found replaced with NaN):\n',
+          file=sys.stderr)
+    print(PATHS, file=sys.stderr)
     OUTBASEDIR = os.path.abspath(ARGS.outdir)
-    print('Results will be output to directory:', OUTBASEDIR, sep=' ')
+    print('Results will be output to directory:', OUTBASEDIR, sep=' ',
+          file=sys.stderr)
     ISOLATE_PATHS_BASENAME = os.path.splitext(os.path.basename
                                              (ARGS.isolate_paths))[0]
 
@@ -640,7 +648,8 @@ if ARGS.subparser_name == 'run':
         '''
         Creates the result directories.
         '''
-        print('Creating output results directory structure.')
+        print('Creating output results directory structure.',
+              file=sys.stderr)
 
 
     # Create an empty list for reads if there are none or only one.
@@ -731,8 +740,10 @@ if ARGS.subparser_name == 'run':
         '''
         species_df = read_pandas_df(sp_id_file)
         if iso not in species_df.index:
-            print(str(iso), 'Not found in species_df (pandas imported as int or float not str?).  MLST will now autodetect the scheme.  If this is a problem, delete',
-                   outfile, 'and re-run pandoo.')
+            print(str(iso), 'Not found in species_df (pandas imported as int \
+                  or float not str?).  MLST will now autodetect the scheme.  \
+                  If this is a problem, delete', outfile, 'and re-run pandoo.',
+                  file=sys.stderr)
         else:
             species = species_df.loc[iso].iloc[0]
             run_mlst(infile, outfile, iso, species)
@@ -835,7 +846,7 @@ if ARGS.subparser_name == 'run':
             Take a list of all the results files for each isolate and 
             cbind them into on summary.csv pd.df for the isolate.
             '''
-            print('Gathering results files from '+infolder)
+            print('Gathering results files from '+infolder, file=sys.stderr)
 
             # Generate summary.csv, including ariba table.
             infiles_complex = [buildpath(OUTBASEDIR, iso, i) for i in
@@ -883,7 +894,7 @@ if ARGS.subparser_name == 'run':
             Take a list of all the results files for each isolate and cbind
             them into on summary.csv pd.df for the isolate.
             '''
-            print('Gathering results files from '+infolder)
+            print('Gathering results files from '+infolder, file=sys.stderr)
 
             # Generate complex outfile.
             infiles_complex = [buildpath(OUTBASEDIR, iso, i) for i in
@@ -931,7 +942,7 @@ if ARGS.subparser_name == 'run':
             # Join along axis 0 (rows).
             df2 = pd.concat(dfs, axis=0)
             cols = [i for i in df2.columns.values]
-            df4 = df2.sort_index(axis=1)
+            df4 = df2.sort_index(axis=1) #this needs to be output to stdout
             write_pandas_df(outfile, df4)
 
         outfile = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
@@ -942,15 +953,17 @@ if ARGS.subparser_name == 'run':
 
         join_infiles(summaryfiles_list, outfile)
         join_infiles(summaryfiles_list_simple, outfile_simple)
-        print('Summary metadata (detailed) written to '+outfile)
-        print('Summary metadata (simplified) written to '+outfile_simple)
+        print('Summary metadata (detailed) written to '+outfile,
+              file=sys.stderr)
+        print('Summary metadata (simplified) written to '+outfile_simple,
+              file=sys.stderr)
 
 
     N_CONTIG_FILES = PATHS[PATHS.pathContigs.notnull()]
     if ARGS.infer_tree_on and len(N_CONTIG_FILES) < 3:
         TREE_OUT_MESSAGE = 'No tree written as less than three isolates ' +\
                            'had assembly (contig) files'
-        print(TREE_OUT_MESSAGE)
+        print(TREE_OUT_MESSAGE, file=sys.stderr)
 
 
     if ARGS.infer_tree_on and len(N_CONTIG_FILES) >= 3:
@@ -997,7 +1010,7 @@ if ARGS.subparser_name == 'run':
         def mashtree(infiles, outfile, treefile, N_CPU):
             # Get first line of outfile
             run_mashtree(infiles, outfile, treefile, N_CPU)
-            print('Treefile written to '+treefile)
+            print('Treefile written to '+treefile, file=sys.stderr)
         
 #         def andi_contigs_dist_matrix(infiles, outfile, model, ncpu):
 #             '''
@@ -1045,8 +1058,8 @@ if ARGS.subparser_name == 'run':
             Read in mashtree, rename the tips.
             '''
             treestring = Path(infile).read_text()
-            print(treestring)
-            print(infile)
+            print(treestring, file=sys.stderr)
+            print(infile, file=sys.stderr)
             tre = Tree(treestring, format=1)
             relabel_tree_tips(tre, outfile, distmat)
 
@@ -1074,7 +1087,7 @@ if ARGS.subparser_name == 'run':
 
     print('\nLength of infile list as string: ' +
           str(len(', '.join([buildpath(OUTBASEDIR, i)
-                             for i in PATHS.index.values]))))
+                             for i in PATHS.index.values]))), file=sys.stderr)
 
 
     if len(', '.join([buildpath(OUTBASEDIR, i)
@@ -1086,7 +1099,7 @@ if ARGS.subparser_name == 'run':
                       for i in PATHS.index.values])) >= 16000:
         print('Too many input files to generate a flowchart.\n' +
               'Run with less isolates and the same options ' +
-              'to the get the image.')
+              'to the get the image.', file=sys.stderr)
 
 
 if ARGS.subparser_name == 'merge':

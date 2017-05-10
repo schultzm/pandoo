@@ -96,7 +96,7 @@ def get_paths(infile):
             # Don't do  df1.index = df1.index.map(str)
             return df1
         except ValueError:
-            print(infile+' contains no data')
+            print(infile+' contains no data', file=sys.stderr)
             sys.exit()
 
 
@@ -145,14 +145,16 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, cutoff,
         # correct building of the abricate run command.
         dbases_path = os.path.split(dbase[1])
         if os.path.split(dbase[1])[1] == 'default':
-            print('Using pre-packaged abricate database '+dbase[0])
+            print('Using pre-packaged abricate database '+dbase[0],
+                  file=sys.stderr)
             cmd = 'abricate --db '+dbase[0] +\
                   ' --minid '+str(identity)+' '+infile+' > '+outfile
         else:
             if not os.path.exists(dbase[1]):
                 sys.exit('Print unable to find '+dbase[1])
             else:
-                print('Using custom db '+ dbase[0]+' at '+dbase[1])
+                print('Using custom db '+ dbase[0]+' at '+dbase[1],
+                      file=sys.stderr)
                 cmd = 'abricate --db '+dbase[0]+' --datadir '+dbase[1] +\
                       ' --minid '+str(identity)+' '+infile+' > '+outfile
         os.system(cmd)
@@ -425,7 +427,7 @@ def run_mlst(assembly, outfile, isolate, species):
         elif species.split(' ')[0] in FORCE_MLST_SCHEME:
             sp_scheme = FORCE_MLST_SCHEME[species.split(' ')[0]]
         if sp_scheme is not None:
-            print("species scheme is:", sp_scheme)
+            print("species scheme is:", sp_scheme, file=sys.stderr)
             cmd = 'mlst --scheme '+sp_scheme+' --quiet ' +\
                    assembly
             args_mlst = shlex.split(cmd)
@@ -491,14 +493,14 @@ def run_ariba(infiles, outfile, isolate, dbase, result_basedir):
     else:
         cmd = 'ariba run --force '+dbase[1]+' '+' '.join(infiles)+' ' +\
               outfile  # --threads generates an error
-        print(cmd)
+        print(cmd, file=sys.stderr)
         os.system(cmd)
         if os.path.exists(os.path.join(outfile, 'report.tsv')):
             cmd_sum = 'ariba summary --cluster_cols assembled,known_var,' +\
                       'match,ref_seq,novel_var,pct_id ' +\
                       os.path.join(result_basedir, 'ariba_summary') +\
                       ' '+os.path.join(outfile, 'report.tsv')
-            print(cmd_sum)
+            print(cmd_sum, file=sys.stderr)
             os.system(cmd_sum)
             ariba_summary_dict = {}
             ariba_data = pd.read_table(os.path.join(result_basedir,
@@ -548,7 +550,7 @@ def run_quicktree(infile, outfile):
     tre = Tree(treestring, format=1)
     # This redundant print statement is to make use of (to trick pylint) the
     # dummy outfile variable (required as input by @files decorator)
-    print('Got tree for writing to '+outfile)
+    print('Got tree for writing to '+outfile, file=sys.stderr)
     return tre
 
 
@@ -565,13 +567,8 @@ def relabel_tree_tips(tree, out, matrix):
 #         if len(iso) > 0:
 #             leaf.name = iso[0]
     tree.set_outgroup(tree.get_midpoint_outgroup())
-    print(tree)
-    print('If tip labels are not as expected, delete ' +
-          matrix+' then rerun the analysis')
-    if os.path.exists(out):
-        os.remove(out)
     tree.write(outfile=out, format=1)
-    print('Tree file at '+out)
+    print('Tree file at '+out, file=sys.stderr)
 
 
 def symlink_contigs(infile, outfile):
@@ -607,13 +604,13 @@ def run_mashtree(infiles, outfile, treefile, cpus):
     with open(outhandle_name, 'w') as outhandle:
         relative_paths = [os.path.relpath(i) for i in infiles]
         outhandle.write(' '.join(relative_paths))
-        print(outhandle_name)
+        print(outhandle_name, file=sys.stderr)
     cmd = 'cat '+outhandle_name+' | xargs mashtree.pl ' +\
           ' --numcpus '+str(cpus)+' --outmatrix '+outfile +\
           ' --sort-order random --tempdir ' +\
           os.path.join(os.path.split(outfile)[0], 'tmp_msh')+' > ' +\
           treefile
-    print(cmd)
+    print(cmd, file=sys.stderr)
     os.system(cmd)
     # Remove the file of filenames.
 #     os.remove(outhandle_name)
@@ -625,14 +622,13 @@ def run_andi(infiles, outfile, model, cpus):
     outhandle_name = os.path.join(os.path.split(outfile)[0], 'filenames.txt')
     with open(outhandle_name, 'w') as outhandle:
         relative_paths = [os.path.relpath(i) for i in infiles]
-        print('XXXXX', relative_paths)
         outhandle.write(' '.join(relative_paths))
-        print(outhandle_name)
+        print(outhandle_name, file=sys.stderr)
     # Use xargs to get the list of filenames for andi job,
     # else the commandline will get flooded
     andi_c = 'cat '+outhandle_name+ ' | '+ 'xargs andi -j -m '+model+' -t ' +\
              str(cpus)+' '+' > '+outfile
-    print(andi_c)
+    print(andi_c, file=sys.stderr)
     os.system(andi_c)
     #os.remove(outhandle_name)
 
