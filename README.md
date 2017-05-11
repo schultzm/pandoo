@@ -45,35 +45,24 @@ The following packages need to be installed before pip3 installing Pandoo.  To i
     brew install abricate --HEAD
     brew install quicktree
     brew install seqtk
-    brew install andi
     brew install mummer
     brew install bowtie2
     brew install cd-hit
     brew install ariba
     brew install kraken
 
-You will then need to install a kraken database::  
-    
-    wget https://ccb.jhu.edu/software/kraken/dl/minikraken.tgz
-
-Choose a folder (say $HOME) to put it in, you need ~4 GB free::  
-
-    tar -C $HOME minikraken.tgz
-
-Then add the following to your $HOME/.bashrc::  
-
-    export KRAKEN_DB_PATH=$HOME/minikraken_20141208
+Follow the instructions at https://ccb.jhu.edu/software/kraken to set up the databases.
 
 Installing Pandoo
 -----------------------
 
 To perform any of these install steps **for all users, remove '--user'**.  The final symlink step is not required if installing for all users.  Pandoo is written for **python3** and installation requires **pip3** and **setuptools**.  To install the latest 'stable' version of pandoo for the current user only, do::  
 
-    pip3 install --user --no-binary :all: pandoo
+    pip3 install pandoo --user 
 
 To upgrade::  
 
-    pip3 install --user --upgrade pandoo
+    pip3 install pandoo --user --upgrade 
 
 To install the latest, potentially unstable, bleeding-edge version::  
 
