@@ -43,37 +43,30 @@ The following packages need to be installed before pip3 installing Pandoo.  To i
     brew update
     brew install mlst --HEAD
     brew install abricate --HEAD
-    brew install quicktree
     brew install seqtk
-    brew install andi
     brew install mummer
     brew install bowtie2
     brew install cd-hit
     brew install ariba
     brew install kraken
 
-You will then need to install a kraken database::  
-    
-    wget https://ccb.jhu.edu/software/kraken/dl/minikraken.tgz
+Follow the instructions at https://ccb.jhu.edu/software/kraken to set up the databases.
 
-Choose a folder (say $HOME) to put it in, you need ~4 GB free::  
+Additionally, mashtree.pl needs to be installed. Follow the instructions at https://github.com/lskatz/mashtree
+Add mashtree.pl to your path and ensure that mashtree.pl can be executed by typing on the command line:
+    mashtree.pl
 
-    tar -C $HOME minikraken.tgz
-
-Then add the following to your $HOME/.bashrc::  
-
-    export KRAKEN_DB_PATH=$HOME/minikraken_20141208
 
 Installing Pandoo
 -----------------------
 
 To perform any of these install steps **for all users, remove '--user'**.  The final symlink step is not required if installing for all users.  Pandoo is written for **python3** and installation requires **pip3** and **setuptools**.  To install the latest 'stable' version of pandoo for the current user only, do::  
 
-    pip3 install --user --no-binary :all: pandoo
+    pip3 install pandoo --user
 
 To upgrade::  
 
-    pip3 install --user --upgrade pandoo
+    pip3 install pandoo --user --upgrade
 
 To install the latest, potentially unstable, bleeding-edge version::  
 
@@ -132,22 +125,28 @@ After exiting the screen, the screenlog.0 can be viewed as the run progresses us
 Output looks like::  
 
     usage: pandoo <command> <options>
-    
-    Run summary analyses.
-    
+
+    This is a tool for exploring your bacterial genome data. Given some assemblies
+    and/or paired-end read sets, run a pipeline of software tools to generate an
+    NJ tree from assemblies and a complementary table of metadata/results (contig
+    and read QC, mlst, species ID, resistance genes, virulence factors, plasmid
+    replicon types).
+
     optional arguments:
       -h, --help     show this help message and exit
       -v, --version  Print version and quit.
-    
-    Available commands::
 
-        check        Check non-pip3-installable dependencies
+    Commands:
+  
+        check        Check pipeline dependencies
         input        Generate input table
         run          Run the pandoo pipeline
-        merge        Runs the module to read in the metadata table and merge it
-                     with Pandoo output.csv files.
+        merge        Merge two metadata tables
 
-Notice, above, three modules: one each for **input**, **run** and **merge**.  Each can be run independently. 
+Notice, above, four modules: one each for **check**, **input**, **run** and **merge**.  Each can be run independently. 
+
+**check module**
+This module will check if the required softwares are installed and executable as per the calls to these programs used by pandoo.
 
 **input module**
 
@@ -167,7 +166,7 @@ In the results folder there is a sub-folder for each isolate containing the resu
 
     results/isolates_metadataAll.csv
     results/isolates_metadataAll_simplified.csv
-    results/isolates_andi_JCdist_nj.tre
+    results/isolates_mashtree.tre
 
 **merge module**
 

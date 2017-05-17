@@ -3,7 +3,7 @@
 '''
     Uses python3.
 
-    This script contains the task functions for pando
+    This script contains the task functions for pandoo
 
     Copyright (C) 2017 Mark B Schultz
     https://github.com/schultzm/
@@ -30,10 +30,12 @@ from multiprocessing import cpu_count
 import shlex
 from subprocess import Popen, PIPE
 import sys
+import glob
 from ete3 import Tree
 import numpy as np
 import pandas as pd
-
+from pathlib import Path
+from io import StringIO
 
 def calc_threads(n_isos, ncores):
     '''
@@ -95,7 +97,7 @@ def get_paths(infile):
             # Don't do  df1.index = df1.index.map(str)
             return df1
         except ValueError:
-            print(infile+' contains no data')
+            print(infile+' contains no data', file=sys.stderr)
             sys.exit()
 
 
@@ -107,14 +109,13 @@ def write_pandas_df(outfile, dframe):
         dframe.to_csv(output, sep=',', mode='w', index=True,
                       index_label=PANDAS_INDEX_LABEL)
 
-
 def read_pandas_df(infile):
     '''
     Will read in the csv and return a Pandas dataframe.
     '''
-    # Old code for converting to string:
-    # converters={'Isolate': lambda x: str(x)}
-    df1 = pd.read_csv(infile, index_col=0, header=0, dtype=str)
+    contents = Path(infile).read_text()
+    df1 = pd.read_csv(StringIO(contents), header=0,
+                      converters={'Isolate': str}).set_index('Isolate')
     return df1
 
 
@@ -144,14 +145,16 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, cutoff,
         # correct building of the abricate run command.
         dbases_path = os.path.split(dbase[1])
         if os.path.split(dbase[1])[1] == 'default':
-            print('Using pre-packaged abricate database '+dbase[0])
+            print('Using pre-packaged abricate database '+dbase[0],
+                  file=sys.stderr)
             cmd = 'abricate --db '+dbase[0] +\
                   ' --minid '+str(identity)+' '+infile+' > '+outfile
         else:
             if not os.path.exists(dbase[1]):
                 sys.exit('Print unable to find '+dbase[1])
             else:
-                print('Using custom db '+ dbase[0]+' at '+dbase[1])
+                print('Using custom db '+ dbase[0]+' at '+dbase[1],
+                      file=sys.stderr)
                 cmd = 'abricate --db '+dbase[0]+' --datadir '+dbase[1] +\
                       ' --minid '+str(identity)+' '+infile+' > '+outfile
         os.system(cmd)
@@ -424,7 +427,7 @@ def run_mlst(assembly, outfile, isolate, species):
         elif species.split(' ')[0] in FORCE_MLST_SCHEME:
             sp_scheme = FORCE_MLST_SCHEME[species.split(' ')[0]]
         if sp_scheme is not None:
-            print("species scheme is:", sp_scheme)
+            print("species scheme is:", sp_scheme, file=sys.stderr)
             cmd = 'mlst --scheme '+sp_scheme+' --quiet ' +\
                    assembly
             args_mlst = shlex.split(cmd)
@@ -490,14 +493,14 @@ def run_ariba(infiles, outfile, isolate, dbase, result_basedir):
     else:
         cmd = 'ariba run --force '+dbase[1]+' '+' '.join(infiles)+' ' +\
               outfile  # --threads generates an error
-        print(cmd)
+        print(cmd, file=sys.stderr)
         os.system(cmd)
         if os.path.exists(os.path.join(outfile, 'report.tsv')):
             cmd_sum = 'ariba summary --cluster_cols assembled,known_var,' +\
                       'match,ref_seq,novel_var,pct_id ' +\
                       os.path.join(result_basedir, 'ariba_summary') +\
                       ' '+os.path.join(outfile, 'report.tsv')
-            print(cmd_sum)
+            print(cmd_sum, file=sys.stderr)
             os.system(cmd_sum)
             ariba_summary_dict = {}
             ariba_data = pd.read_table(os.path.join(result_basedir,
@@ -535,37 +538,16 @@ def run_ariba(infiles, outfile, isolate, dbase, result_basedir):
                     ariba_df)
 
 
-def run_quicktree(infile, outfile):
-    '''
-    Run quicktree, replace the quotes in the stdout, write the tree to file
-    '''
-    cmd = 'quicktree -in m -out t '+infile
-    args = shlex.split(cmd)
-    proc = Popen(args, stdout=PIPE)
-    treestring = proc.stdout.read().decode('UTF-8') \
-                 .rstrip().replace("'", "").replace("\n", "")
-    tre = Tree(treestring, format=1)
-    # This redundant print statement is to make use of (to trick pylint) the
-    # dummy outfile variable (required as input by @files decorator)
-    print('Got tree for writing to '+outfile)
-    return tre
-
-
-def relabel_tree_tips(tree, dframe, out, matrix):
+def relabel_tree_tips(tree, out, matrix):
     '''
     Take a tree, traverse it, swapping out the tip labels with new ones in
     df['tempID'].
     '''
     for leaf in tree.traverse():
-        iso = dframe.loc[dframe['tempID'] == leaf.name].index.values
-        if len(iso) > 0:
-            leaf.name = iso[0]
+        leaf.name = leaf.name.replace('_contigs.fa', '')
     tree.set_outgroup(tree.get_midpoint_outgroup())
-    print(tree)
-    print('If tip labels are not as expected, delete ' +
-          matrix+' then rerun the analysis')
     tree.write(outfile=out, format=1)
-    print('Tree file at '+out)
+    print('Tree file at '+out, file=sys.stderr)
 
 
 def symlink_contigs(infile, outfile):
@@ -575,20 +557,39 @@ def symlink_contigs(infile, outfile):
     cmd = 'ln -s '+infile+' '+outfile
     os.system(cmd)
 
+def run_mashtree(infiles, outfile, treefile, cpus):
+    mashtmp = 'tmp_msh'
+    infile_list = ' '.join(infiles)
+    # Remove the tsv files from previous runs if they exist.
+    for i in infiles:
+        symlinkfilename = os.path.split(i)[-1]
+        mashouttsv = os.path.join(os.path.split(os.path.split(i)[0])[0],
+                                  mashtmp,
+                                  symlinkfilename+'.msh.tsv')
+        if os.path.exists(mashouttsv):
+            os.remove(mashouttsv)
+    for distance_matrix in glob.glob(os.path.join(os.path.split(outfile)[0],
+                                                  'tmp_msh', 'distances.*')):
+        os.remove(distance_matrix)
+    # Outhandle is where the file of filenames will be stored.
+    outhandle_name = os.path.join(os.path.split(outfile)[0], 'filenames.txt')
+    with open(outhandle_name, 'w') as outhandle:
+        relative_paths = [os.path.relpath(i) for i in infiles]
+        outhandle.write(' '.join(relative_paths))
+        print(outhandle_name, file=sys.stderr)
+    cmd = 'cat '+outhandle_name+' | xargs mashtree.pl ' +\
+          ' --numcpus '+str(cpus)+' --outmatrix '+outfile +\
+          ' --sort-order random --tempdir ' +\
+          os.path.join(os.path.split(outfile)[0], 'tmp_msh')+' > ' +\
+          treefile
+    print(cmd, file=sys.stderr)
+    os.system(cmd)
+    # Remove the file of filenames.
+    os.remove(outhandle_name)
 
-def run_andi(infiles, outfile, model, cpus):
-    '''
-    Run Andi phylo.
-    Todo: if a distance has already been calculated, don't recalculate it on
-    a re-run.
-    '''
-    andi_c = 'andi -j -m '+model+' -t ' +\
-             str(cpus)+' '+' '.join(infiles)+' > '+outfile
-    print(andi_c)
-    os.system(andi_c)
 
 # From https://github.com/tseemann/mlst/blob/master/db/species_scheme_map.tab
-FORCE_MLST_SCHEME = {"Acinetobacter baumannii": "abaumannii_2",
+FORCE_MLST_SCHEME = {"Acinetobacter baumannii": "abaumannii_2", # i.e., Pasteur
                      "Achromobacter": "achromobacter",
                      "Aeromonas": "aeromonas",
                      "Aspergillus afumigatus": "afumigatus",
