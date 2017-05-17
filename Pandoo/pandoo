@@ -450,16 +450,30 @@ if ARGS.subparser_name == 'input':
 # Code for the 'run' subparser:
 if ARGS.subparser_name == 'run':
     print('\nEntered \'run\' subparser:', file=sys.stderr)
+    OUTBASEDIR = os.path.abspath(ARGS.outdir)
 
-    # Check if the output directory already exists and is writeable.
-    if os.access(ARGS.outdir, os.W_OK):
-        print('\nResults will be output to '+os.path.abspath(ARGS.outdir),
-              file=sys.stderr)
-    else:
-        sys.exit('\n...but you do not have permissions to write to ' + 
-                 os.path.abspath(ARGS.outdir)+'.\n\nExiting now.\n')
-    
-    # Check if the input file of file names exists.
+    def create_outfolder():
+        '''
+        This will check if the outfolder exists,
+        check permissions on the outfolder,
+        and, if the folder doesn't exist, try to create it.
+        If permissions on the creation fails, run will exit.
+        '''
+        try:
+            if os.path.exists(OUTBASEDIR) and os.access(OUTBASEDIR, os.W_OK):
+                print('\nResults will be output to directory:',
+                      OUTBASEDIR, file=sys.stderr)
+            else:
+                os.mkdir(OUTBASEDIR)
+                print('\nResults will be output to directory:',
+                      OUTBASEDIR, file=sys.stderr)
+        except OSError:
+            sys.exit('\nYou do not have permissions to create',
+                     OUTBASEDIR)
+
+    create_outfolder()
+
+    # Check if the input file of file names exists. Else exit.
     if os.path.exists(ARGS.isolate_paths):
         PATHS = get_paths(ARGS.isolate_paths)
     else:
@@ -468,11 +482,9 @@ if ARGS.subparser_name == 'run':
                  '\' could not found.\n\nExiting now.\n')
 
 
-
     def inject_abricate_dbs():
         '''
-        Determine the paths to the abricate_dbs, dynamically.  Todo: remove
-        hardcoding to abricate resfinder db.
+        Determine the paths to the abricate_dbs, dynamically.
         '''
         if ARGS.abricate_dbs is None:
             args = shlex.split('abricate --list')
@@ -520,6 +532,7 @@ if ARGS.subparser_name == 'run':
             try:
                 db_dict = ast.literal_eval(ARGS.abricate_dbs)
                 for key, value in db_dict.items():
+                    print(key, value)
                     db_dict[key] = os.path.abspath(value)
                 return db_dict
             except:
@@ -633,32 +646,44 @@ if ARGS.subparser_name == 'run':
                     PATHS.loc[isolate, header] = np.nan
 
 
-    def shortened_id():
-        '''
-        Create a random 9 character (alphanumeric) tag for use as a tempfile
-        name.
-        '''
-        chars = string.ascii_uppercase + string.digits
-        return ''.join(random.SystemRandom().choice(chars) for _ in range(10))
-
-
-    def temps_to_paths():
-        '''
-        Populate the paths df with a column for temp names
-        '''
-        for iso in PATHS.index.values:
-            if isinstance(PATHS.loc[iso, 'pathContigs'], str):
-                PATHS.loc[iso, 'tempID'] = shortened_id()
-
-
-    temps_to_paths()
+#     def shortened_id():
+#         '''
+#         Create a random 9 character (alphanumeric) tag for use as a tempfile
+#         name.
+#         '''
+#         chars = string.ascii_uppercase + string.digits
+#         return ''.join(random.SystemRandom().choice(chars) for _ in range(10))
+# 
+# 
+#     def temp_paths():
+#         '''
+#         Populate the paths df with a column for temp paths
+#         '''
+#         for iso in PATHS.index.values:
+#             PATHS.loc[iso, 'tempPATH'] = shortened_id()
+# 
+# 
+#     temps_to_paths()
+    
+#     def convert_gbk_or_gbkgz_to_fasta(infile):
+#             compression = ''
+#             for i in infile:
+#                 # Compression test based on file extension using linux 'file'.
+#                 args = shlex.split('file '+i)
+#                 proc = Popen(args, stdout=PIPE)
+#                 f_fmt = proc.stdout.read().decode('UTF-8').rstrip().split()
+#                 if 'gzip' in f_fmt:
+#                     compression = '--gzip-compressed '
+#                     break
+#                 if 'bzip2' in f_fmt:
+#                     compression = '--bzip2-compressed '
+#                     break
+# 
+#         pass
 
     print('\nPaths file (NB: paths not found replaced with NaN):\n',
           file=sys.stderr)
     print(PATHS, file=sys.stderr)
-    OUTBASEDIR = os.path.abspath(ARGS.outdir)
-    print('Results will be output to directory:', OUTBASEDIR, sep=' ',
-          file=sys.stderr)
     ISOLATE_PATHS_BASENAME = os.path.splitext(os.path.basename
                                              (ARGS.isolate_paths))[0]
 
@@ -768,9 +793,10 @@ if ARGS.subparser_name == 'run':
         '''
         species_df = read_pandas_df(sp_id_file)
         if iso not in species_df.index:
-            print(str(iso), 'Not found in species_df (pandas imported as int \
-                  or float not str?).  MLST will now autodetect the scheme.  \
-                  If this is a problem, delete', outfile, 'and re-run pandoo.',
+            print(str(iso), 'Not found in species_df (pandas imported as ' +\
+                  'int or float not str?).  MLST will now autodetect the ' +\
+                  'scheme.  If this is a problem, delete', outfile,
+                  'and re-run pandoo.',
                   file=sys.stderr)
         else:
             species = species_df.loc[iso].iloc[0]
@@ -978,7 +1004,6 @@ if ARGS.subparser_name == 'run':
         outfile_simple = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
                                    '_metadataAll_simplified.csv')
          
-
         join_infiles(summaryfiles_list, outfile)
         join_infiles(summaryfiles_list_simple, outfile_simple)
         print('Summary metadata (detailed) written to '+outfile,
@@ -1031,15 +1056,13 @@ if ARGS.subparser_name == 'run':
                     os.rename(MASH_PARAMS[0][1],
                               MASH_PARAMS[0][1].replace('.mat',
                                                         '_%d.mat') % time())
-
 #         print(MASH_PARAMS)
         @follows(symlink_to_contigs, merge_summaries)
         @files(MASH_PARAMS)
         def mashtree(infiles, outfile, treefile, N_CPU):
             # Get first line of outfile
             run_mashtree(infiles, outfile, treefile, N_CPU)
-            print('Treefile written to '+treefile, file=sys.stderr)
-        
+
 #         def andi_contigs_dist_matrix(infiles, outfile, model, ncpu):
 #             '''
 #             Run andi on the symlinked assemblies
@@ -1075,8 +1098,8 @@ if ARGS.subparser_name == 'run':
 # 
         MASHTREE_PARAMS = [[MASH_PARAMS[0][2],
                             buildpath(OUTBASEDIR,
-                                      'mashtree_'+
-                                      ISOLATE_PATHS_BASENAME+'.tre'),
+                                      ISOLATE_PATHS_BASENAME +\
+                                      '_mashtree.tre'),
                             MASH_PARAMS[0][1]]]
 #         print(MASHTREE_PARAMS)
         @follows(mashtree)
@@ -1086,10 +1109,12 @@ if ARGS.subparser_name == 'run':
             Read in mashtree, rename the tips.
             '''
             treestring = Path(infile).read_text()
-            print(treestring, file=sys.stderr)
-            print(infile, file=sys.stderr)
+#             print(treestring, file=sys.stderr)
             tre = Tree(treestring, format=1)
+#             print(tre)
             relabel_tree_tips(tre, outfile, distmat)
+            print('Treefile written to '+outfile, file=sys.stderr)
+
 
 #         QUICKTREE_PARAMS = [[ANDI_PARAMS[0][1],
 #                              buildpath(OUTBASEDIR,
