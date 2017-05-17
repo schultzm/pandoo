@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-git tag 0.1.85
+git tag 0.1.86
 git push --tags
 git add .
 git commit -m 'cleaned up code blocks, ready to merge back into master'
