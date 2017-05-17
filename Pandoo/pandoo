@@ -317,8 +317,9 @@ if ARGS.subparser_name == 'check':
         '''
         #os.X_OK checks if the file is executable
         return shutil.which(cmd, mode=os.X_OK)
-    #These softwares are required to run. Ariba is optional as the module
-    #is optionally run.
+    # These softwares are required to run. Ariba and mashtree are 
+    # optional as the modules
+    # are optionally run.
     SOFTWARES = ['abricate',
                  'mlst',
                  'seqtk',
@@ -332,7 +333,7 @@ if ARGS.subparser_name == 'check':
     for software in sorted(SOFTWARES):
         path = check_exists(software)
         if path is not None:
-            print(software.ljust(10)+':\tok\t'+path.ljust(10), file=sys.stderr)
+            print(software.ljust(11)+':\tok\t'+path.ljust(11), file=sys.stderr)
         else:
             print('Dependency '+software+' is not installed.  Refer ' +\
                   'to README at https://pypi.python.org/pypi/Pandoo.',
