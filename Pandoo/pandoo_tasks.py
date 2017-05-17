@@ -3,7 +3,7 @@
 '''
     Uses python3.
 
-    This script contains the task functions for pando
+    This script contains the task functions for pandoo
 
     Copyright (C) 2017 Mark B Schultz
     https://github.com/schultzm/
@@ -114,7 +114,8 @@ def read_pandas_df(infile):
     Will read in the csv and return a Pandas dataframe.
     '''
     contents = Path(infile).read_text()
-    df1 = pd.read_csv(StringIO(contents), header=0, converters={'Isolate': str}).set_index('Isolate')
+    df1 = pd.read_csv(StringIO(contents), header=0,
+                      converters={'Isolate': str}).set_index('Isolate')
     return df1
 
 
@@ -537,22 +538,6 @@ def run_ariba(infiles, outfile, isolate, dbase, result_basedir):
                     ariba_df)
 
 
-def run_quicktree(infile, outfile):
-    '''
-    Run quicktree, replace the quotes in the stdout, write the tree to file
-    '''
-    cmd = 'quicktree -in m -out t '+infile
-    args = shlex.split(cmd)
-    proc = Popen(args, stdout=PIPE)
-    treestring = proc.stdout.read().decode('UTF-8') \
-                 .rstrip().replace("'", "").replace("\n", "")
-    tre = Tree(treestring, format=1)
-    # This redundant print statement is to make use of (to trick pylint) the
-    # dummy outfile variable (required as input by @files decorator)
-    print('Got tree for writing to '+outfile, file=sys.stderr)
-    return tre
-
-
 def relabel_tree_tips(tree, out, matrix):
     '''
     Take a tree, traverse it, swapping out the tip labels with new ones in
@@ -560,11 +545,6 @@ def relabel_tree_tips(tree, out, matrix):
     '''
     for leaf in tree.traverse():
         leaf.name = leaf.name.replace('_contigs.fa', '')
-        # the code .replace('_contigs.fa', '') is only necessary with mashtree
-        # remove for andi
-#         iso = dframe.loc[dframe['tempID'] == leaf.name.replace('_contigs.fa', '')].index.values
-#         if len(iso) > 0:
-#             leaf.name = iso[0]
     tree.set_outgroup(tree.get_midpoint_outgroup())
     tree.write(outfile=out, format=1)
     print('Tree file at '+out, file=sys.stderr)
@@ -588,13 +568,6 @@ def run_mashtree(infiles, outfile, treefile, cpus):
                                   symlinkfilename+'.msh.tsv')
         if os.path.exists(mashouttsv):
             os.remove(mashouttsv)
-# 
-#     # Remove the tree file if it exists.
-#     if os.path.exists(treefile):
-#         os.remove(treefile)
-#     # Remove the distance matrix.mat if it exists.
-#     if os.path.exists(outfile):
-#         os.remove(outfile)
     for distance_matrix in glob.glob(os.path.join(os.path.split(outfile)[0],
                                                   'tmp_msh', 'distances.*')):
         os.remove(distance_matrix)
@@ -612,27 +585,11 @@ def run_mashtree(infiles, outfile, treefile, cpus):
     print(cmd, file=sys.stderr)
     os.system(cmd)
     # Remove the file of filenames.
-#     os.remove(outhandle_name)
+    os.remove(outhandle_name)
 
-def run_andi(infiles, outfile, model, cpus):
-    '''
-    Run Andi phylo.
-    '''
-    outhandle_name = os.path.join(os.path.split(outfile)[0], 'filenames.txt')
-    with open(outhandle_name, 'w') as outhandle:
-        relative_paths = [os.path.relpath(i) for i in infiles]
-        outhandle.write(' '.join(relative_paths))
-        print(outhandle_name, file=sys.stderr)
-    # Use xargs to get the list of filenames for andi job,
-    # else the commandline will get flooded
-    andi_c = 'cat '+outhandle_name+ ' | '+ 'xargs andi -j -m '+model+' -t ' +\
-             str(cpus)+' '+' > '+outfile
-    print(andi_c, file=sys.stderr)
-    os.system(andi_c)
-    #os.remove(outhandle_name)
 
 # From https://github.com/tseemann/mlst/blob/master/db/species_scheme_map.tab
-FORCE_MLST_SCHEME = {"Acinetobacter baumannii": "abaumannii_2",
+FORCE_MLST_SCHEME = {"Acinetobacter baumannii": "abaumannii_2", # i.e., Pasteur
                      "Achromobacter": "achromobacter",
                      "Aeromonas": "aeromonas",
                      "Aspergillus afumigatus": "afumigatus",

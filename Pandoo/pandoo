@@ -12,18 +12,18 @@
         'pandoo -h'
 
     pandoo calls functions inside pandoo_tasks.py.
-    There are two subparsers 'input' and 'run'.
+    There are four subparsers.  Notably,
     'pandoo input' is used to generate the input.tab file.
     'pandoo run' is used to run the pipeline analysis.
     To get help on any of the subparsers do:
-        'pandoo check'
+        'pandoo check -h'
         'pandoo input -h'
         'pandoo run -h'
         'pandoo merge -h'
 
 
     Copyright (C) 2017 Mark B Schultz
-    https://github.com/schultzm/
+    https://github.com/schultzm/pandoo
     email: dr.mark.schultz@gmail.com
 
     This program is free software: you can redistribute it and/or modify
@@ -73,9 +73,7 @@ from Pandoo.pandoo_tasks import (calc_threads,
                                       run_kraken,
                                       run_mlst,
                                       run_ariba,
-                                      run_quicktree,
                                       symlink_contigs,
-                                      run_andi,
                                       run_mashtree,
                                       relabel_tree_tips)
 from ruffus import (mkdir,
@@ -403,7 +401,8 @@ if ARGS.subparser_name == 'input':
             isolates = get_isolate_ids(os.path.abspath(ARGS.isolate_names))
             # 2. Set the parameters tuples list for the assemblies component to
             #    use in assemblies_available().
-            params_assemblies_finder = [(ID, os.path.abspath(ARGS.assemblies_dir),
+            params_assemblies_finder = [(ID,
+                                         os.path.abspath(ARGS.assemblies_dir),
                                          ARGS.wildcard_expansion_off) for ID
                                         in isolates]
             # 3. Set the pool size based on the number of 
@@ -432,13 +431,13 @@ if ARGS.subparser_name == 'input':
                     # else: assembly[0] = requested_id, assembly[1] = path.
                     if assembly[0] == '':
                         reads_paths = reads_available(assembly[1],
-                                                      os.path.abspath(ARGS \
-                                                                     .readsdir))
+                                                      os.path \
+                                                      .abspath(ARGS.readsdir))
                         output = [assembly[1], reads_paths]
                     else:
                         reads_paths = reads_available(assembly[0],
-                                                      os.path.abspath(ARGS \
-                                                                      .readsdir))
+                                                      os.path \
+                                                      .abspath(ARGS.readsdir))
                         output = [assembly[0], assembly[1], reads_paths]
                     print('\t'.join(output))
         else:
@@ -485,7 +484,8 @@ if ARGS.subparser_name == 'run':
 
     def inject_abricate_dbs():
         '''
-        Determine the paths to the abricate_dbs, dynamically.
+        Determine the paths to the abricate_dbs, dynamically.  Or add
+        paths to dbs manually.
         '''
         if ARGS.abricate_dbs is None:
             args = shlex.split('abricate --list')
@@ -502,33 +502,6 @@ if ARGS.subparser_name == 'run':
             for key in db_dict.items():
                 print(': '.join(key), file=sys.stderr)
             return db_dict
-# 
-#             abricate_plasmidfinder = pkg_resources \
-#                                      .resource_filename(__name__,
-#                                                         os.path \
-#                                                         .join('plasmidfinder'))
-#             abricate_resfinder = '/home/tseemann/git/abricate/bin/../db'
-#             abricate_VFDB = pkg_resources \
-#                              .resource_filename(__name__,
-#                                                 os.path \
-#                                                 .join('VFDB'))
-# 
-#             if os.path.isdir(abricate_plasmidfinder) and +\
-#             os.path.isdir(abricate_resfinder) and +\
-#             os.path.isdir(abricate_VFDB):
-#                 dbs = {'plasmidfinder':abricate_plasmidfinder,
-#                         'resfinder': abricate_resfinder,
-#                         'VFDB': abricate_VFDB}
-#                 print('\nAbricate analyses to be run using the following databases:')
-#                 for key in dbs.items():
-#                     print(': '.join(key))
-#                 return dbs
-# 
-#             else:
-#                 sys.exit('Cannot find path to either ' +\
-#                          abricate_plasmidfinder+' or ' +\
-#                          abricate_resfinder+' or ' +\
-#                          abricate_VFDB+'.  Exiting now.')
         else:
             try:
                 db_dict = ast.literal_eval(ARGS.abricate_dbs)
@@ -648,41 +621,6 @@ if ARGS.subparser_name == 'run':
             else:
                 PATHS.loc[isolate, header] = np.nan
 
-
-#     def shortened_id():
-#         '''
-#         Create a random 9 character (alphanumeric) tag for use as a tempfile
-#         name.
-#         '''
-#         chars = string.ascii_uppercase + string.digits
-#         return ''.join(random.SystemRandom().choice(chars) for _ in range(10))
-# 
-# 
-#     def temp_paths():
-#         '''
-#         Populate the paths df with a column for temp paths
-#         '''
-#         for iso in PATHS.index.values:
-#             PATHS.loc[iso, 'tempPATH'] = shortened_id()
-# 
-# 
-#     temps_to_paths()
-    
-#     def convert_gbk_or_gbkgz_to_fasta(infile):
-#             compression = ''
-#             for i in infile:
-#                 # Compression test based on file extension using linux 'file'.
-#                 args = shlex.split('file '+i)
-#                 proc = Popen(args, stdout=PIPE)
-#                 f_fmt = proc.stdout.read().decode('UTF-8').rstrip().split()
-#                 if 'gzip' in f_fmt:
-#                     compression = '--gzip-compressed '
-#                     break
-#                 if 'bzip2' in f_fmt:
-#                     compression = '--bzip2-compressed '
-#                     break
-# 
-#         pass
 
     print('\nPaths file (NB: paths not found replaced with NaN):\n',
           file=sys.stderr)
@@ -1028,7 +966,6 @@ if ARGS.subparser_name == 'run':
                                      i+'_contigs.fa')] for
                           i in PATHS.index.values
                           if pd.notnull(PATHS.loc[i, 'pathContigs'])]
-#         print(SYMLINK_PARAMS)
         @follows(kraken_contigs_sp_id)
         @files(SYMLINK_PARAMS)
         def symlink_to_contigs(infile, outfile):
@@ -1037,11 +974,6 @@ if ARGS.subparser_name == 'run':
             '''
             symlink_contigs(infile, outfile)
 
-#         ANDI_PARAMS = [[[i[1] for i in SYMLINK_PARAMS],
-#                         buildpath(OUTBASEDIR,
-#                                   'andi_'+ARGS.model_andi+'dist_' +
-#                                   ISOLATE_PATHS_BASENAME+'.mat'),
-#                         ARGS.model_andi, N_CPU]]
         MASH_PARAMS = [[[i[1] for i in SYMLINK_PARAMS],
                         buildpath(OUTBASEDIR,
                                   'mashtree_'+'dist_' +
@@ -1059,52 +991,18 @@ if ARGS.subparser_name == 'run':
                     os.rename(MASH_PARAMS[0][1],
                               MASH_PARAMS[0][1].replace('.mat',
                                                         '_%d.mat') % time())
-#         print(MASH_PARAMS)
+
         @follows(symlink_to_contigs, merge_summaries)
         @files(MASH_PARAMS)
         def mashtree(infiles, outfile, treefile, N_CPU):
             # Get first line of outfile
             run_mashtree(infiles, outfile, treefile, N_CPU)
 
-#         def andi_contigs_dist_matrix(infiles, outfile, model, ncpu):
-#             '''
-#             Run andi on the symlinked assemblies
-#             '''
-#             run_andi(infiles, outfile, model, ncpu)
-#             # Fix andi matrix to lower triangle phylip format.
-#             df0 = pd.read_csv(outfile, header=None, skiprows=1,
-#                               sep=' ', index_col=0, iterator=True, chunksize=1000)
-#             df1 = pd.concat(df0)
-#             # Old code for removing the upper triangle and diagonals
-#             # df1 = df1.where(np.tril(np.ones(df1.shape)).astype(np.bool))
-#             # np.fill_diagonal(df1.values, np.nan)
-#             # If tempID indices renamed to original name in paths df,
-#             # this will result in tip names longer than 10 characters.
-#             # Quicktree
-#             # fails at 25 characters, so stick with the temp names for now and
-#             # replace the temp names after the tree is inferred.  Might be
-#             # fixed
-#             # if quicktree code is made open-source.
-#             # Old code here, which could be re-implemented quicktree code
-#             # avail:
-#             # df1.rename(index=lambda x: "'"+
-#             # PATHS.index.values[np.where(PATHS['tempID']==x)[0][0]]+\
-#             # "'", inplace=True)
-#             # Wrap names in single quotes
-#             df1.rename(index=lambda x: "'"+x+"'", inplace=True)
-#             df1.to_csv(outfile, index=True, header=['' for i in
-#                                                     df1.columns.values],
-#                        index_label=len(df1), sep='\t')
-#             # Remove the symlinks:
-#             for i in infiles:
-#                 os.remove(i)
-# 
         MASHTREE_PARAMS = [[MASH_PARAMS[0][2],
                             buildpath(OUTBASEDIR,
                                       ISOLATE_PATHS_BASENAME +\
                                       '_mashtree.tre'),
                             MASH_PARAMS[0][1]]]
-#         print(MASHTREE_PARAMS)
         @follows(mashtree)
         @files(MASHTREE_PARAMS)
         def relabel_mashtree(infile, outfile, distmat):
@@ -1112,31 +1010,11 @@ if ARGS.subparser_name == 'run':
             Read in mashtree, rename the tips.
             '''
             treestring = Path(infile).read_text()
-#             print(treestring, file=sys.stderr)
             tre = Tree(treestring, format=1)
-#             print(tre)
             relabel_tree_tips(tre, outfile, distmat)
             print('Treefile written to '+outfile, file=sys.stderr)
 
 
-#         QUICKTREE_PARAMS = [[ANDI_PARAMS[0][1],
-#                              buildpath(OUTBASEDIR,
-#                                        buildpath(OUTBASEDIR,
-#                                                  ISOLATE_PATHS_BASENAME +
-#                                                  '_andi_' +
-#                                                  ARGS.model_andi +
-#                                                  'dist_nj.tre'))]]
-#         @follows(andi_contigs_dist_matrix)
-#         @files(QUICKTREE_PARAMS)
-#         def infer_nj_quicktree(infile, outfile):
-#             '''
-#             Read in the andi distance matrix, NaN-populate upper triangle and
-#             diagonal of matrix. Input matrix to quicktree.
-#             '''
-#             tree = run_quicktree(infile, outfile)
-#             relabel_tree_tips(tree, PATHS[['tempID']], outfile, infile)
-# 
-    #     print(help(pipeline_run))
     if ARGS.force_rebuild_summary_files:
         pipeline_run(multiprocess=N_CPU,
                      forcedtorun_tasks=[summarise_intra_iso_results])
