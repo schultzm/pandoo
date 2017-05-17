@@ -34,7 +34,8 @@ import glob
 from ete3 import Tree
 import numpy as np
 import pandas as pd
-
+from pathlib import Path
+from io import StringIO
 
 def calc_threads(n_isos, ncores):
     '''
@@ -108,14 +109,12 @@ def write_pandas_df(outfile, dframe):
         dframe.to_csv(output, sep=',', mode='w', index=True,
                       index_label=PANDAS_INDEX_LABEL)
 
-
 def read_pandas_df(infile):
     '''
     Will read in the csv and return a Pandas dataframe.
     '''
-    # Old code for converting to string:
-    # converters={'Isolate': lambda x: str(x)}
-    df1 = pd.read_csv(infile, index_col=0, header=0, dtype=str)
+    contents = Path(infile).read_text()
+    df1 = pd.read_csv(StringIO(contents), header=0, converters={'Isolate': str}).set_index('Isolate')
     return df1
 
 

@@ -635,9 +635,9 @@ if ARGS.subparser_name == 'run':
               ARIBA_JOB_LIMIT, file=sys.stderr)
 
     # Convert paths in df to absolute paths.
-    # todo: allow input of .gbk or .gbk.gz in the contigs column
     for isolate in PATHS.index.values:
         for header in PATHS.columns.values:
+            # Need to re-check this
             if isinstance(PATHS.loc[isolate, header], str):
                 if os.path.exists(os.path.abspath(PATHS.loc[isolate, header])):
                     PATHS.loc[isolate, header] = \
@@ -645,6 +645,8 @@ if ARGS.subparser_name == 'run':
                                                   header])
                 else:
                     PATHS.loc[isolate, header] = np.nan
+            else:
+                PATHS.loc[isolate, header] = np.nan
 
 
 #     def shortened_id():
