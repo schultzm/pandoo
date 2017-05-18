@@ -514,6 +514,47 @@ def run_ngmaster(infile, outfile, isolate):
     write_pandas_df(outfile, ngmast_df)
 
 
+def run_meningotype(infile, outfile, isolate):
+    '''
+    Run meningotype on the isolate contigs file.
+    '''
+    if len(infile) == 0:
+        meningo_result = create_pandas_df({}, isolate)
+    if len(infile) == 1:
+        infile = infile[0]
+        # Run meningotype and capture the output from the screen as pandas df.
+        args = shlex.split('meningotype '+infile)
+        proc = Popen(args, stdout=PIPE)
+        result = proc.stdout.read().decode('UTF-8')
+        mng_res = pd.read_csv(StringIO(result), header=0, sep='\t')
+        # Replace the path to the contigs in first col with the isolate name.
+        mng_res.iloc[0, 0] = isolate
+        # Set the df index to the first column.
+        meningo_result = mng_res.set_index(mng_res.columns.values[0])
+        # Delete the index header.
+        meningo_result.index.name = None
+        # Add the text 'meningotype_' to all column names.
+        meningo_result.columns = ['meningotype_'+i for i in
+                                 meningo_result.columns.values]
+
+    def get_meningotype_version():
+        '''
+        Get the version of meningotype.
+        '''
+        args = shlex.split('meningotype --version')
+        proc = Popen(args, stderr=PIPE)
+        version = proc.stderr.read().decode('UTF-8').rstrip().split('\n')[1]
+        print(version)
+        return {'softwareMENINGOTYPEversion': version}
+
+    # Capture all dfs into a single df and then write to file.
+    meningo_version = create_pandas_df(get_meningotype_version(), isolate)
+    meningo_df = pd.concat([meningo_result, meningo_version], axis=1)
+    meningo_df.replace(to_replace='-', value='', inplace=True)
+    write_pandas_df(outfile, meningo_df)
+    print(meningo_df)
+
+
 def run_ariba(infiles, outfile, isolate, dbase, result_basedir):
     '''
     Run Ariba on the reads.

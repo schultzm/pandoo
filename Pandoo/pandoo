@@ -75,6 +75,7 @@ from Pandoo.pandoo_tasks import (calc_threads,
                                       run_ariba,
                                       symlink_contigs,
                                       run_mashtree,
+                                      run_meningotype,
                                       run_ngmaster,
                                       relabel_tree_tips)
 from ruffus import (mkdir,
@@ -734,30 +735,35 @@ if ARGS.subparser_name == 'run':
         Runs MLST on the contigs, using the species consensus after Kraken.
         '''
         species_df = read_pandas_df(sp_id_file)
-#         if iso not in species_df.index:
-#             print(str(iso), 'Not found in species_df (pandas imported as ' +\
-#                   'int or float not str?).  MLST will now autodetect the ' +\
-#                   'scheme.  If this is a problem, delete', outfile,
-#                   'and re-run pandoo.',
-#                   file=sys.stderr)
-#         else:
         species = species_df.loc[iso].iloc[0]
         run_mlst(infile, outfile, iso, species)
 
 
     NGMASTER_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
                         pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                        buildpath(OUTBASEDIR, i, 'ngmaster.txt'), i,
-                        buildpath(OUTBASEDIR, i, 'species_id.txt')] for i in
-                        PATHS.index.values]
-#     print(NGMASTER_PARAMS)
+                        buildpath(OUTBASEDIR, i, 'ngmaster.txt'), i]
+                       for i in PATHS.index.values]
     @follows(kraken_contigs_sp_id)
     @files(NGMASTER_PARAMS)
-    def ngmaster_contigs(infile, outfile, iso, sp_id_file):
+    def ngmaster_contigs(infile, outfile, iso):
         '''
-        Runs NGMASTer on the contigs if species is Neisseria gonorrhoeae.
+        Runs NGMASTer on the contigs.
         '''
         run_ngmaster(infile, outfile, iso)
+
+
+    MENINGOTYPE_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                            pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                            buildpath(OUTBASEDIR, i, 'meningotype.txt'), i]
+                           for i in PATHS.index.values]
+    @follows(kraken_contigs_sp_id)
+    @files(MENINGOTYPE_PARAMS)
+    def meningotyper_contigs(infile, outfile, iso):
+        '''
+        Runs meningotype on the contigs.
+        '''
+        run_meningotype(infile, outfile, iso)
+
 
     ABRICATE_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
                         pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
@@ -866,6 +872,7 @@ if ARGS.subparser_name == 'run':
                                 'species_id.txt',
                                 'mlst.txt',
                                 'ngmaster.txt',
+                                'meningotype.txt',
                                 'yield_contigs.txt',
                                 'yield_reads.txt'] +
                                [buildpath(OUTBASEDIR, iso,
@@ -885,6 +892,7 @@ if ARGS.subparser_name == 'run':
                                'species_id.txt',
                                'mlst.txt',
                                'ngmaster.txt',
+                               'meningotype.txt',
                                'yield_contigs.txt',
                                'yield_reads.txt'] +
                               [buildpath(OUTBASEDIR, iso,
@@ -916,6 +924,7 @@ if ARGS.subparser_name == 'run':
                         'species_id.txt',
                         'mlst.txt',
                         'ngmaster.txt',
+                        'meningotype.txt',
                         'yield_contigs.txt',
                         'yield_reads.txt'] +
                        [buildpath(OUTBASEDIR, iso, 'abricate_'+key+'.txt')
@@ -929,6 +938,7 @@ if ARGS.subparser_name == 'run':
                         'species_id.txt',
                         'mlst.txt',
                         'ngmaster.txt',
+                        'meningotype.txt',
                         'yield_contigs.txt',
                         'yield_reads.txt'] +
                        [buildpath(OUTBASEDIR, iso,
