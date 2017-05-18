@@ -49,6 +49,8 @@ The following packages need to be installed before pip3 installing Pandoo.  To i
     brew install cd-hit
     brew install ariba
     brew install kraken
+    pip install git+https://github.com/MDU-PHL/ngmaster.git #(see install instructions at https://github.com/MDU-PHL/ngmaster)
+    pip3 install biopython
 
 Follow the instructions at https://ccb.jhu.edu/software/kraken to set up the databases.
 

@@ -115,7 +115,8 @@ def read_pandas_df(infile):
     '''
     contents = Path(infile).read_text()
     df1 = pd.read_csv(StringIO(contents), header=0,
-                      converters={'Isolate': str}).set_index('Isolate')
+                      converters={PANDAS_INDEX_LABEL: str}) \
+                                 .set_index(PANDAS_INDEX_LABEL)
     return df1
 
 
@@ -474,6 +475,45 @@ def run_mlst(assembly, outfile, isolate, species):
     write_pandas_df(outfile, mlst_df)
 
 
+def run_ngmaster(infile, outfile, isolate):
+    '''
+    Run ngmaster on the isolate contigs file.
+    '''
+    if len(infile) == 0:
+        ngmast_result = create_pandas_df({}, isolate)
+    if len(infile) == 1:
+        infile = infile[0]
+        # Run ngmaster and capture the output from the screen as a pandas df.
+        args = shlex.split('ngmaster '+infile)
+        proc = Popen(args, stdout=PIPE)
+        result = proc.stdout.read().decode('UTF-8')
+        ng_res = pd.read_csv(StringIO(result), header=0, sep='\t')
+        # Replace the path to the contigs in first col with the isolate name.
+        ng_res.iloc[0, 0] = isolate
+        # Set the df index to the first column.
+        ngmast_result = ng_res.set_index(ng_res.columns.values[0])
+        # Delete the index header.
+        ngmast_result.index.name = None
+        # Add the text 'ngmaster_' to all column names.
+        ngmast_result.columns = ['ngmaster_'+i for i in
+                                 ngmast_result.columns.values]
+
+    def get_ngmaster_version():
+        '''
+        Get the version of ngmaster.
+        '''
+        args = shlex.split('ngmaster --version')
+        proc = Popen(args, stderr=PIPE)
+        version = proc.stderr.read().decode('UTF-8').rstrip().split('\n')[1]
+        return {'softwareNGMASTERversion': version}
+
+    # Capture all dfs into a single df and then write to file.
+    ngmast_version = create_pandas_df(get_ngmaster_version(), isolate)
+    ngmast_df = pd.concat([ngmast_result, ngmast_version], axis=1)
+    ngmast_df.replace(to_replace='-', value='', inplace=True)
+    write_pandas_df(outfile, ngmast_df)
+
+
 def run_ariba(infiles, outfile, isolate, dbase, result_basedir):
     '''
     Run Ariba on the reads.
@@ -548,6 +588,7 @@ def relabel_tree_tips(tree, out, matrix):
     tree.set_outgroup(tree.get_midpoint_outgroup())
     tree.write(outfile=out, format=1)
     print('Tree file at '+out, file=sys.stderr)
+    print(tree)
 
 
 def symlink_contigs(infile, outfile):
