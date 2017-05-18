@@ -544,7 +544,6 @@ def run_meningotype(infile, outfile, isolate):
         args = shlex.split('meningotype --version')
         proc = Popen(args, stderr=PIPE)
         version = proc.stderr.read().decode('UTF-8').rstrip().split('\n')[1]
-        print(version)
         return {'softwareMENINGOTYPEversion': version}
 
     # Capture all dfs into a single df and then write to file.
@@ -552,7 +551,34 @@ def run_meningotype(infile, outfile, isolate):
     meningo_df = pd.concat([meningo_result, meningo_version], axis=1)
     meningo_df.replace(to_replace='-', value='', inplace=True)
     write_pandas_df(outfile, meningo_df)
-    print(meningo_df)
+
+
+def run_sistr(infile, outfile, isolate, cpus):
+    '''
+    Run sistr on the infile. Only capture and report the serovar_antigen.
+    '''
+    if len(infile) == 0:
+        sistr_result = create_pandas_df({}, isolate)
+    if len(infile) == 1:
+        infile = infile[0]
+        args = shlex.split('sistr -t '+str(cpus)+' --no-cgmlst '+infile)
+        proc = Popen(args, stdout=PIPE)
+        result = proc.stdout.read().decode('UTF-8')
+        sstr_res = pd.read_json(StringIO(result))
+        sstr_out = {'sistr_serovar_antigen': sstr_res.loc[0,'serovar_antigen']}
+        sstr_result = create_pandas_df(sstr_out, isolate)
+
+    def sistr_version():
+        args = shlex.split('sistr --version')
+        proc = Popen(args, stdout=PIPE)
+        version = proc.stdout.read().decode('UTF-8').rstrip().split('\n')[0]
+        return {'softwareSISTRversion': version}
+
+    # Capture all dfs into a single df and then write to file.
+    sstr_version = create_pandas_df(sistr_version(), isolate)
+    sistr_df = pd.concat([sstr_result, sstr_version], axis=1)
+    sistr_df.replace(to_replace='-:-:-', value='', inplace=True)
+    write_pandas_df(outfile, sistr_df)
 
 
 def run_ariba(infiles, outfile, isolate, dbase, result_basedir):

@@ -50,8 +50,9 @@ The following packages need to be installed before pip3 installing Pandoo.  To i
     brew install ariba
     brew install kraken
     pip install git+https://github.com/MDU-PHL/ngmaster.git #(see install instructions at https://github.com/MDU-PHL/ngmaster)
+    pip install git+https://github.com/MDU-PHL/meningotype.git #(see install instructions at https://github.com/MDU-PHL/meningotype)
     pip3 install biopython
-
+    #install sistr from http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0147101 (location?)
 Follow the instructions at https://ccb.jhu.edu/software/kraken to set up the databases.
 
 Additionally, mashtree.pl needs to be installed. Follow the instructions at https://github.com/lskatz/mashtree
