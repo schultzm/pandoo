@@ -623,6 +623,7 @@ def run_legsta(infile, outfile, isolate):
     legst_df.replace(to_replace='-', value='', inplace=True)
     write_pandas_df(outfile, legst_df)
 
+
 def run_lissero(infile, outfile, isolate):
     '''
     Run lissero on the isolate contigs file.
@@ -660,7 +661,7 @@ def run_lissero(infile, outfile, isolate):
     lissr_df = pd.concat([lissr_result, lissr_version], axis=1)
     # Use regex to replace commas in cell values with '+' symbol
     lissr_df.replace(to_replace='[\,]', value='+', regex=True, inplace=True)
-    print(lissr_df)
+#     print(lissr_df)
     write_pandas_df(outfile, lissr_df)
 
 

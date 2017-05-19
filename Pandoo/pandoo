@@ -99,8 +99,15 @@ PARSER = argparse.ArgumentParser(prog='pandoo',
                                  software tools to generate an NJ tree from \
                                  assemblies and a complementary table of \
                                  metadata/results (contig and read QC, \
-                                 mlst, species ID, resistance genes, \
-                                 virulence factors, plasmid replicon types).')
+                                 MLST, species ID, resistance genes, \
+                                 virulence factors, plasmid replicon types, \
+                                 and species-specific in-silico predictions \
+                                 such as Legionella pneumophila SBT, \
+                                 Neisseria meningitidis serotyping, \
+                                 Neisseria gonorrhoeae multi-antigen sequence \
+                                 typing, Listeria monocytogenes serotype \
+                                 prediction, and Salmonella serotyping \
+                                 ).')
 PARSER.add_argument('-v', '--version', help='Print version and quit.',
                     default=False, action='store_true', required=False)
 
@@ -461,6 +468,14 @@ if ARGS.subparser_name == 'input':
 
 # Code for the 'run' subparser:
 if ARGS.subparser_name == 'run':
+
+    def get_species(sp_id_file, iso):
+        '''
+        Read a mini-pandas table containing the species id final call.
+        '''
+        species_df = read_pandas_df(sp_id_file)
+        return species_df.loc[iso].iloc[0]
+
     print('\nEntered \'run\' subparser:', file=sys.stderr)
     OUTBASEDIR = os.path.abspath(ARGS.outdir)
 
@@ -731,23 +746,25 @@ if ARGS.subparser_name == 'run':
         target_col_reads = 'Sp_krkn_reads_1'
         target_col_contigs = 'Sp_krkn_contigs_1'
         if target_col_reads in kraken_reads_sp_id_df.columns and \
-                target_col_contigs in kraken_contigs_sp_id_df:
+                target_col_contigs in kraken_contigs_sp_id_df.columns:
             species_reads = kraken_reads_sp_id_df.loc[str(iso),
                                                       target_col_reads]
             species_cntgs = kraken_contigs_sp_id_df.loc[str(iso),
                                                         target_col_contigs]
-
-
             if species_cntgs == species_reads:
                 species = species_cntgs
             else:
                 species = 'indet'
+        elif target_col_reads not in kraken_reads_sp_id_df.columns and \
+                target_col_contigs in kraken_contigs_sp_id_df.columns:
+            species_cntgs = kraken_contigs_sp_id_df.loc[str(iso),
+                                            target_col_contigs]
+            species = species_cntgs
         else:
             species = 'indet'
-        sp_df = create_pandas_df({'Sp_krkn_ReadAndContigConsensus': species},
+        sp_df = create_pandas_df({'Sp_krkn_FinalCall': species},
                                  iso)
         write_pandas_df(outfile, sp_df)
-
 
     MLST_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
                     pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
@@ -767,67 +784,82 @@ if ARGS.subparser_name == 'run':
 
     NGMASTER_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
                         pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                        buildpath(OUTBASEDIR, i, 'ngmaster.txt'), i]
+                        buildpath(OUTBASEDIR, i, 'ngmaster.txt'), i,
+                        buildpath(OUTBASEDIR, i, 'species_id.txt')]
                        for i in PATHS.index.values]
     @follows(kraken_contigs_sp_id)
     @files(NGMASTER_PARAMS)
-    def ngmaster_contigs(infile, outfile, iso):
+    def ngmaster_contigs(infile, outfile, iso, sp_id_file):
         '''
-        Runs NGMASTer on the contigs.
+        Runs NGMASTer on the contigs if the species is Neisseria gonorrhoeae.
         '''
-        run_ngmaster(infile, outfile, iso)
+        species = get_species(sp_id_file, iso)
+        if species == 'Neisseria gonorrhoeae':
+            run_ngmaster(infile, outfile, iso)
 
 
     MENINGOTYPE_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
-                            pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                            buildpath(OUTBASEDIR, i, 'meningotype.txt'), i]
-                           for i in PATHS.index.values]
+                           pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                           buildpath(OUTBASEDIR, i, 'meningotype.txt'), i,
+                           buildpath(OUTBASEDIR, i, 'species_id.txt')]
+                          for i in PATHS.index.values]
     @follows(kraken_contigs_sp_id)
     @files(MENINGOTYPE_PARAMS)
-    def meningotype_contigs(infile, outfile, iso):
+    def meningotype_contigs(infile, outfile, iso, sp_id_file):
         '''
-        Runs meningotype on the contigs.
+        Runs meningotype on the contigs if species is Neisseria meningitidis.
         '''
-        run_meningotype(infile, outfile, iso)
+        species = get_species(sp_id_file, iso)
+        if species == 'Neisseria meningitidis':
+            run_meningotype(infile, outfile, iso)
 
 
     LEGSTA_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
-                            pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                            buildpath(OUTBASEDIR, i, 'legsta.txt'), i]
-                           for i in PATHS.index.values]
+                      pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                      buildpath(OUTBASEDIR, i, 'legsta.txt'), i,
+                      buildpath(OUTBASEDIR, i, 'species_id.txt')]
+                     for i in PATHS.index.values]
     @follows(kraken_contigs_sp_id)
     @files(LEGSTA_PARAMS)
-    def legsta_contigs(infile, outfile, iso):
+    def legsta_contigs(infile, outfile, iso, sp_id_file):
         '''
-        Runs legsta on the contigs.
+        Runs legsta on the contigs if the species is Legionella pneumophila.
         '''
-        run_legsta(infile, outfile, iso)
+        species = get_species(sp_id_file, iso)
+        if species == 'Legionella pneumophila':
+            run_legsta(infile, outfile, iso)
 
 
     LISSERO_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
-                            pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                            buildpath(OUTBASEDIR, i, 'lissero.txt'), i]
-                           for i in PATHS.index.values]
+                       pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                       buildpath(OUTBASEDIR, i, 'lissero.txt'), i,
+                       buildpath(OUTBASEDIR, i, 'species_id.txt')]
+                       for i in PATHS.index.values]
     @follows(kraken_contigs_sp_id)
     @files(LISSERO_PARAMS)
-    def lissero_contigs(infile, outfile, iso):
+    def lissero_contigs(infile, outfile, iso, sp_id_file):
         '''
-        Runs lissero on the contigs.
+        Runs lissero on the contigs if the species is Listeria monocytogenes.
         '''
-        run_lissero(infile, outfile, iso)
+        species = get_species(sp_id_file, iso)
+        if species == 'Listeria monocytogenes':
+            run_lissero(infile, outfile, iso)
 
 
     SISTR_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
-                            pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                            buildpath(OUTBASEDIR, i, 'sistr.txt'), i,
-                            N_THREADS] for i in PATHS.index.values]
+                     pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                     buildpath(OUTBASEDIR, i, 'sistr.txt'), i,
+                     buildpath(OUTBASEDIR, i, 'species_id.txt'),
+                     N_THREADS] for i in PATHS.index.values]
     @follows(kraken_contigs_sp_id)
     @files(SISTR_PARAMS)
-    def sistr_contigs(infile, outfile, iso, cpus):
+    def sistr_contigs(infile, outfile, iso, sp_id_file, cpus):
         '''
-        Runs sistr on the contigs.
+        Runs sistr on the contigs if the genus is Salmonella.
         '''
-        run_sistr(infile, outfile, iso, cpus)
+        species = get_species(sp_id_file, iso)
+        if species.split()[0] == 'Salmonella':
+            run_sistr(infile, outfile, iso, cpus)
 
 
     ABRICATE_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
@@ -899,10 +931,10 @@ if ARGS.subparser_name == 'run':
         run_seqtk_fqchk(infiles, outfile, iso)
 
 
-    # Create a list of all the results files for each isolate
     def write_summary_df_to_file(infile_dfs_list, outfile_df, iso):
         '''
-        Take a list of dfs, join them and write them to file.
+        Take a list of dfs, join them and write them to file.  The infile
+        list is reduced to only those files that exist in the directory.
         '''
         dfs = [read_pandas_df(infile) for infile in infile_dfs_list if
                os.path.exists(infile)]
@@ -949,6 +981,7 @@ if ARGS.subparser_name == 'run':
                                [buildpath(OUTBASEDIR, iso,
                                           'ariba_'+key+'_summary_melted.txt')
                                 for key, value in list(ARIBA_DBS.items())]]
+            print(infiles_complex)
             # Requires the os.path.exists(infile) otherwise looks for 
             # ariba even if reads weren't there for ariba analysis
             write_summary_df_to_file(infiles_complex, outfile, iso)
@@ -1124,7 +1157,7 @@ if ARGS.subparser_name == 'run':
 
     if ARGS.force_rebuild_summary_files:
         pipeline_run(multiprocess=N_CPU,
-                     forcedtorun_tasks=[summarise_intra_iso_results])
+                     forcedtorun_tasks=[kraken_sp_id_consensus])
     else:
         pipeline_run(multiprocess=N_CPU)
 
