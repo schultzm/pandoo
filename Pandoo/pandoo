@@ -322,13 +322,10 @@ if ARGS.subparser_name == 'check':
         #os.X_OK checks if the file is executable
         return shutil.which(cmd, mode=os.X_OK)
     # These softwares are required to run. Ariba and mashtree are 
-    # optional as the modules
-    # are optionally run.
+    # optional as these modules are optionally run.
     SOFTWARES = ['abricate',
                  'mlst',
                  'seqtk',
-#                  'andi',
-#                  'quicktree',
                  'mashtree.pl',
                  'meningotype',
                  'ngmaster',
@@ -337,7 +334,6 @@ if ARGS.subparser_name == 'check':
                  'kraken',
                  'legsta',
                  'LisSero.py']
-                 #readseq (for converting genbanks to fasta)
 
     for software in sorted(SOFTWARES):
         path = check_exists(software)
