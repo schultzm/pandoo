@@ -335,7 +335,8 @@ if ARGS.subparser_name == 'check':
                  'sistr',
                  'ariba',
                  'kraken',
-                 'legsta']
+                 'legsta',
+                 'LisSero.py']
                  #readseq (for converting genbanks to fasta)
 
     for software in sorted(SOFTWARES):
