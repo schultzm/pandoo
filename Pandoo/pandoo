@@ -41,6 +41,7 @@
 import argparse
 import ast
 from datetime import datetime
+import fileinput
 import glob
 from multiprocessing import Pool, cpu_count
 from time import time
@@ -153,8 +154,10 @@ SUBPARSER_RUN.add_argument('-i', '--isolate_paths', help='Tab-delimited.  \
                            in this order:\
                            isolate_ID\\tPathToContigs\\tPathToReads1\\t' +
                            'PathToReads2.\
-                           Missing values leave blank.  Use absolute PATHS.',
-                           required=True, dest='isolate_paths')
+                           Missing values leave blank.  Use absolute PATHS.  \
+                           If no input file, reads from stdin (e.g., use \
+                           pandoo run -i test.txt | pandoo run -o test_res)',
+                           required=False, dest='isolate_paths')
 SUBPARSER_RUN.add_argument('-o', '--outdir', help='Output directory.',
                            required=True, dest='outdir')
 SUBPARSER_RUN.add_argument('-k', '--kraken_db', help='Path to Kraken db.  \
@@ -331,7 +334,8 @@ if ARGS.subparser_name == 'check':
                  'ngmaster',
                  'sistr',
                  'ariba',
-                 'kraken']
+                 'kraken',
+                 'legsta']
                  #readseq (for converting genbanks to fasta)
 
     for software in sorted(SOFTWARES):
@@ -405,6 +409,9 @@ if ARGS.subparser_name == 'input':
         if os.path.exists(os.path.abspath(ARGS.isolate_names)):
             # 1. Read in the isolate_IDs from a file.
             isolates = get_isolate_ids(os.path.abspath(ARGS.isolate_names))
+            if len(isolates) == 0:
+                sys.exit('No input data in' +
+                         os.path.abspath(ARGS.isolate_names))
             # 2. Set the parameters tuples list for the assemblies component to
             #    use in assemblies_available().
             params_assemblies_finder = [(ID,
@@ -479,13 +486,21 @@ if ARGS.subparser_name == 'run':
 
     create_outfolder()
 
-    # Check if the input file of file names exists. Else exit.
-    if os.path.exists(ARGS.isolate_paths):
-        PATHS = get_paths(ARGS.isolate_paths)
+    # Get data either from argparse or if empty stdin and report source.
+    # Exit if no data.
+    if ARGS.isolate_paths:
+        if os.path.exists(ARGS.isolate_paths):
+            PATHS = get_paths(ARGS.isolate_paths)
+            print('Reading input data from',
+                  os.path.abspath(ARGS.isolate_paths))
+            if not sys.stdin.isatty():
+                print('Ignoring input from stdin.')
+    elif not sys.stdin.isatty():
+        PATHS = get_paths(sys.stdin.read())
+        print('Reading input data from stdin.')
     else:
-        sys.exit('\n...but file of file names \'' +
-                 os.path.abspath(ARGS.isolate_paths) +
-                 '\' could not found.\n\nExiting now.\n')
+        sys.exit('\n...but file of file names ' +\
+                 'could not found from argparse or stdin.\n\nExiting now.\n')
 
 
     def inject_abricate_dbs():
@@ -511,6 +526,8 @@ if ARGS.subparser_name == 'run':
         else:
             try:
                 db_dict = ast.literal_eval(ARGS.abricate_dbs)
+                print('\nAbricate analyses to be run using the following ' +
+                      'databases:', file=sys.stderr)
                 for key, value in db_dict.items():
                     print(key, value)
                     db_dict[key] = os.path.abspath(value)
@@ -572,15 +589,18 @@ if ARGS.subparser_name == 'run':
     # Read in the input.tab file with paths and isolate names and
     # exit if duplicates exist.
     if True in PATHS.index.duplicated():
-        print('\nThe following isolates are duplicated in the file \'' +
-              ARGS.isolate_paths+'\':', file=sys.stderr)
+        print('\nThe following isolate names are duplicated in the input ' +
+              'table', file=sys.stderr)
         print('\n'.join(PATHS.index[PATHS.index.duplicated()].values),
               file=sys.stderr)
         print('Please remove redundant rows and re-run.', file=sys.stderr)
+        print('Perhaps switch off wildcard expansion (i.e., use the \'-w\' '+ 
+              'option) if using \'pandoo input\'.', file=sys.stderr)
         sys.exit('Exiting now.\n')
 
     # Get out now if the isolate names are misinterpreted as numbers.
     # Importing as string does not fix in the case of e.g., 14E7
+    # This is now only used for development purposes.
     breaker_df = []
     for ind in PATHS.index.values:
         if isinstance(ind, str):
@@ -631,8 +651,11 @@ if ARGS.subparser_name == 'run':
     print('\nPaths file (NB: paths not found replaced with NaN):\n',
           file=sys.stderr)
     print(PATHS, file=sys.stderr)
-    ISOLATE_PATHS_BASENAME = os.path.splitext(os.path.basename
+    if ARGS.isolate_paths:
+        ISOLATE_PATHS_BASENAME = os.path.splitext(os.path.basename
                                              (ARGS.isolate_paths))[0]
+    else:
+        ISOLATE_PATHS_BASENAME = 'fromstdin'
 
 
     def buildpath(*arg):
@@ -762,7 +785,7 @@ if ARGS.subparser_name == 'run':
                            for i in PATHS.index.values]
     @follows(kraken_contigs_sp_id)
     @files(MENINGOTYPE_PARAMS)
-    def meningotyper_contigs(infile, outfile, iso):
+    def meningotype_contigs(infile, outfile, iso):
         '''
         Runs meningotype on the contigs.
         '''
@@ -793,7 +816,7 @@ if ARGS.subparser_name == 'run':
                        for key, value in list(ABRICATE_DBS.items())]
     @follows(kraken_contigs_sp_id)
     @files(ABRICATE_PARAMS)
-    def abricate_contigs_blast(infile, outfile, outfile_simple, iso,
+    def abricate_contigs(infile, outfile, outfile_simple, iso,
                                database, cutoff, identity):
         '''
         Runs Abricate on the contigs.
@@ -815,7 +838,7 @@ if ARGS.subparser_name == 'run':
         @follows(kraken_contigs_sp_id)
         @jobs_limit(ARIBA_JOB_LIMIT)
         @files(ARIBA_PARAMS)
-        def ariba_reads_minimapping(infiles, outfile, iso, database,
+        def ariba_reads_minimap(infiles, outfile, iso, database,
                                     result_basedir):
             '''
             Runs Ariba on the reads.
@@ -870,8 +893,8 @@ if ARGS.subparser_name == 'run':
                              buildpath(OUTBASEDIR, i, 'summary_simple.csv'),
                              str(i)] for i in PATHS.index.values]
     if ARGS.ariba_on:
-        @follows(mlst_contigs, abricate_contigs_blast, seqtk_comp_contigs,
-                 seqtk_fqchk_reads, ariba_reads_minimapping)
+        @follows(mlst_contigs, abricate_contigs, seqtk_comp_contigs,
+                 seqtk_fqchk_reads, ariba_reads_minimap)
         @files(RESULT_FILES_PER_ISO)
         # Add the file paths to the summary.csv file.
         def summarise_intra_iso_results(infolder, outfile,
@@ -924,7 +947,7 @@ if ARGS.subparser_name == 'run':
 
 
     else:
-        @follows(mlst_contigs, abricate_contigs_blast, seqtk_comp_contigs,
+        @follows(mlst_contigs, abricate_contigs, seqtk_comp_contigs,
                  seqtk_fqchk_reads)
         @files(RESULT_FILES_PER_ISO)
         # Add the file paths to the summary.csv file.

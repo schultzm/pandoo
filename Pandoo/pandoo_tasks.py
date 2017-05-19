@@ -87,18 +87,23 @@ def get_paths(infile):
     '''
     while True:
         try:
-            df1 = pd.read_csv(infile, header=None, sep='\t', index_col=0)
-            df1.columns = ['pathContigs', 'pathReads1', 'pathReads2']
-            df1.index.rename(PANDAS_INDEX_LABEL, inplace=True)
-            # Don't convert the index to str.  Notify user though.
-            # The user then will have to
-            # go into their .tab file and put an X in front of the offending
-            # index (e.g., 14E7 should be X14E7 or '14E7', NOT 14E7.).
-            # Don't do  df1.index = df1.index.map(str)
-            return df1
+            # Read in the infile as text as some isolate names are numeric, 
+            # which causes problems downstream if the index is not str.
+            contents = Path(infile).read_text()
+            df1 = pd.read_csv(StringIO(contents), header=None, sep='\t',
+                              converters={0:str})
+            df1.columns = [PANDAS_INDEX_LABEL, 'pathContigs', 'pathReads1', 'pathReads2']
+            df2 = df1.set_index(PANDAS_INDEX_LABEL)
+            return df2
+        except:
+            pass
+        try:
+            df1 = pd.read_csv(StringIO(infile), header=None, sep='\t', converters={0: str})
+            df1.columns = [PANDAS_INDEX_LABEL, 'pathContigs', 'pathReads1', 'pathReads2']
+            df2 = df1.set_index(PANDAS_INDEX_LABEL)
+            return df2
         except ValueError:
-            print(infile+' contains no data', file=sys.stderr)
-            sys.exit()
+            sys.exit('Infile contains no data')
 
 
 def write_pandas_df(outfile, dframe):
@@ -558,7 +563,7 @@ def run_sistr(infile, outfile, isolate, cpus):
     Run sistr on the infile. Only capture and report the serovar_antigen.
     '''
     if len(infile) == 0:
-        sistr_result = create_pandas_df({}, isolate)
+        sstr_result = create_pandas_df({}, isolate)
     if len(infile) == 1:
         infile = infile[0]
         args = shlex.split('sistr -t '+str(cpus)+' --no-cgmlst '+infile)

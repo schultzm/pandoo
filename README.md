@@ -53,6 +53,8 @@ The following packages need to be installed before pip3 installing Pandoo.  To i
     pip install git+https://github.com/MDU-PHL/meningotype.git #(see install instructions at https://github.com/MDU-PHL/meningotype)
     pip3 install biopython
     #install sistr from http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0147101 (location?)
+    #git clone https://github.com/MDU-PHL/legsta.git, then add it to your path so is executable with 'legsta'
+
 Follow the instructions at https://ccb.jhu.edu/software/kraken to set up the databases.
 
 Additionally, mashtree.pl needs to be installed. Follow the instructions at https://github.com/lskatz/mashtree
@@ -88,8 +90,7 @@ Now, symlink the packaged databases in site-packages above to the folder contain
 
     ln -s ~/.local/lib/python3.6/site-packages/Pandoo/CARD/ ~/.local/bin
     ln -s ~/.local/lib/python3.6/site-packages/Pandoo/VFDB/ ~/.local/bin
-    ln -s ~/.local/lib/python3.6/site-packages/Pandoo/VFDB_core/ ~/.local/bin
-    ln -s ~/.local/lib/python3.6/site-packages/Pandoo/plasmidfinder/ ~/.local/bin
+    ln -s ~/.local/lib/python3.6/site-packages/Pandoo/qacGenes/ ~/.local/bin
 
 
 **To uninstall**, do::  
