@@ -79,6 +79,7 @@ from Pandoo.pandoo_tasks import (calc_threads,
                                       run_meningotype,
                                       run_ngmaster,
                                       run_sistr,
+                                      run_legsta,
                                       relabel_tree_tips)
 from ruffus import (mkdir,
                     follows,
@@ -788,6 +789,18 @@ if ARGS.subparser_name == 'run':
         '''
         run_meningotype(infile, outfile, iso)
 
+    LEGSTA_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                            pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                            buildpath(OUTBASEDIR, i, 'legsta.txt'), i]
+                           for i in PATHS.index.values]
+    @follows(kraken_contigs_sp_id)
+    @files(LEGSTA_PARAMS)
+    def legsta_contigs(infile, outfile, iso):
+        '''
+        Runs legsta on the contigs.
+        '''
+        run_legsta(infile, outfile, iso)
+
 
     SISTR_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
                             pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
@@ -911,6 +924,7 @@ if ARGS.subparser_name == 'run':
                                 'ngmaster.txt',
                                 'meningotype.txt',
                                 'sistr.txt',
+                                'legsta.txt',
                                 'yield_contigs.txt',
                                 'yield_reads.txt'] +
                                [buildpath(OUTBASEDIR, iso,
@@ -932,6 +946,7 @@ if ARGS.subparser_name == 'run':
                                'ngmaster.txt',
                                'meningotype.txt',
                                'sistr.txt',
+                               'legsta.txt',
                                'yield_contigs.txt',
                                'yield_reads.txt'] +
                               [buildpath(OUTBASEDIR, iso,
@@ -965,6 +980,7 @@ if ARGS.subparser_name == 'run':
                         'ngmaster.txt',
                         'meningotype.txt',
                         'sistr.txt',
+                        'legsta.txt',
                         'yield_contigs.txt',
                         'yield_reads.txt'] +
                        [buildpath(OUTBASEDIR, iso, 'abricate_'+key+'.txt')
@@ -980,6 +996,7 @@ if ARGS.subparser_name == 'run':
                         'ngmaster.txt',
                         'meningotype.txt',
                         'sistr.txt',
+                        'legsta.txt',
                         'yield_contigs.txt',
                         'yield_reads.txt'] +
                        [buildpath(OUTBASEDIR, iso,
