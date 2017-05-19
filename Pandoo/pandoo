@@ -858,7 +858,6 @@ if ARGS.subparser_name == 'run':
         Runs sistr on the contigs if the genus is Salmonella.
         '''
         species = get_species(sp_id_file, iso)
-        print(species)
         if species.split()[0] == 'Salmonella':
             run_sistr(infile, outfile, iso, cpus)
 
