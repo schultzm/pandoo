@@ -1161,8 +1161,10 @@ if ARGS.subparser_name == 'run':
                             '_metadataAll.csv')
         outfile_simple = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
                                    '_metadataAll_simplified.csv')
-        os.remove(outfile)
-        os.remove(outfile_simple)
+        if os.path.exists(outfile):
+            os.remove(outfile)
+        if os.path.exists(outfile_simple):
+            os.remove(outfile_simple)
         pipeline_run(multiprocess=N_CPU,
                      forcedtorun_tasks=[summarise_intra_iso_results])
     else:
