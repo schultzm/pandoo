@@ -621,8 +621,48 @@ def run_legsta(infile, outfile, isolate):
     legst_version = create_pandas_df(get_legsta_version(), isolate)
     legst_df = pd.concat([legst_result, legst_version], axis=1)
     legst_df.replace(to_replace='-', value='', inplace=True)
-#     print(legst_df)
     write_pandas_df(outfile, legst_df)
+
+def run_lissero(infile, outfile, isolate):
+    '''
+    Run lissero on the isolate contigs file.
+    '''
+    if len(infile) == 0:
+        lissr_result = create_pandas_df({}, isolate)
+    if len(infile) == 1:
+        infile = infile[0]
+        # Run lissero and capture the output from the screen as a pandas df.
+        args = shlex.split('LisSero.py '+infile)
+        proc = Popen(args, stdout=PIPE)
+        result = proc.stdout.read().decode('UTF-8')
+        lssr_res = pd.read_csv(StringIO(result), header=0, sep='\t')
+        # Replace the path to the contigs in first col with the isolate name.
+        lssr_res.iloc[0, 0] = isolate
+        # Set the df index to the first column.
+        lissr_result = lssr_res.set_index(lssr_res.columns.values[0])
+        # Delete the index header.
+        lissr_result.index.name = None
+        # Add the text 'lissero_' to all column names.
+        lissr_result.columns = ['lissero_'+i for i in
+                                 lissr_result.columns.values]
+
+    def get_lissero_version():
+        '''
+        Get the version of lissero.
+        '''
+        args = shlex.split('LisSero.py --version')
+        proc = Popen(args, stderr=PIPE)
+        version = proc.stderr.read().decode('UTF-8').rstrip().split('\n')[1]
+        return {'softwareLISSEROversion': version}
+
+    # Capture all dfs into a single df and then write to file.
+    lissr_version = create_pandas_df(get_lissero_version(), isolate)
+    lissr_df = pd.concat([lissr_result, lissr_version], axis=1)
+    # Use regex to replace commas in cell values with '+' symbol
+    lissr_df.replace(to_replace='[\,]', value='+', regex=True, inplace=True)
+    print(lissr_df)
+    write_pandas_df(outfile, lissr_df)
+
 
 def run_ariba(infiles, outfile, isolate, dbase, result_basedir):
     '''

@@ -80,6 +80,7 @@ from Pandoo.pandoo_tasks import (calc_threads,
                                       run_ngmaster,
                                       run_sistr,
                                       run_legsta,
+                                      run_lissero,
                                       relabel_tree_tips)
 from ruffus import (mkdir,
                     follows,
@@ -789,6 +790,7 @@ if ARGS.subparser_name == 'run':
         '''
         run_meningotype(infile, outfile, iso)
 
+
     LEGSTA_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
                             pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
                             buildpath(OUTBASEDIR, i, 'legsta.txt'), i]
@@ -800,6 +802,19 @@ if ARGS.subparser_name == 'run':
         Runs legsta on the contigs.
         '''
         run_legsta(infile, outfile, iso)
+
+
+    LISSERO_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                            pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                            buildpath(OUTBASEDIR, i, 'lissero.txt'), i]
+                           for i in PATHS.index.values]
+    @follows(kraken_contigs_sp_id)
+    @files(LISSERO_PARAMS)
+    def lissero_contigs(infile, outfile, iso):
+        '''
+        Runs lissero on the contigs.
+        '''
+        run_lissero(infile, outfile, iso)
 
 
     SISTR_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
@@ -925,6 +940,7 @@ if ARGS.subparser_name == 'run':
                                 'meningotype.txt',
                                 'sistr.txt',
                                 'legsta.txt',
+                                'lissero.txt',
                                 'yield_contigs.txt',
                                 'yield_reads.txt'] +
                                [buildpath(OUTBASEDIR, iso,
@@ -947,6 +963,7 @@ if ARGS.subparser_name == 'run':
                                'meningotype.txt',
                                'sistr.txt',
                                'legsta.txt',
+                               'lissero.txt',
                                'yield_contigs.txt',
                                'yield_reads.txt'] +
                               [buildpath(OUTBASEDIR, iso,
@@ -981,6 +998,7 @@ if ARGS.subparser_name == 'run':
                         'meningotype.txt',
                         'sistr.txt',
                         'legsta.txt',
+                        'lissero.txt',
                         'yield_contigs.txt',
                         'yield_reads.txt'] +
                        [buildpath(OUTBASEDIR, iso, 'abricate_'+key+'.txt')
@@ -997,6 +1015,7 @@ if ARGS.subparser_name == 'run':
                         'meningotype.txt',
                         'sistr.txt',
                         'legsta.txt',
+                        'lissero.txt',
                         'yield_contigs.txt',
                         'yield_reads.txt'] +
                        [buildpath(OUTBASEDIR, iso,
