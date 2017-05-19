@@ -787,7 +787,7 @@ if ARGS.subparser_name == 'run':
                         buildpath(OUTBASEDIR, i, 'ngmaster.txt'), i,
                         buildpath(OUTBASEDIR, i, 'species_id.txt')]
                        for i in PATHS.index.values]
-    @follows(kraken_contigs_sp_id)
+    @follows(kraken_sp_id_consensus)
     @files(NGMASTER_PARAMS)
     def ngmaster_contigs(infile, outfile, iso, sp_id_file):
         '''
@@ -803,7 +803,7 @@ if ARGS.subparser_name == 'run':
                            buildpath(OUTBASEDIR, i, 'meningotype.txt'), i,
                            buildpath(OUTBASEDIR, i, 'species_id.txt')]
                           for i in PATHS.index.values]
-    @follows(kraken_contigs_sp_id)
+    @follows(kraken_sp_id_consensus)
     @files(MENINGOTYPE_PARAMS)
     def meningotype_contigs(infile, outfile, iso, sp_id_file):
         '''
@@ -819,7 +819,7 @@ if ARGS.subparser_name == 'run':
                       buildpath(OUTBASEDIR, i, 'legsta.txt'), i,
                       buildpath(OUTBASEDIR, i, 'species_id.txt')]
                      for i in PATHS.index.values]
-    @follows(kraken_contigs_sp_id)
+    @follows(kraken_sp_id_consensus)
     @files(LEGSTA_PARAMS)
     def legsta_contigs(infile, outfile, iso, sp_id_file):
         '''
@@ -835,7 +835,7 @@ if ARGS.subparser_name == 'run':
                        buildpath(OUTBASEDIR, i, 'lissero.txt'), i,
                        buildpath(OUTBASEDIR, i, 'species_id.txt')]
                        for i in PATHS.index.values]
-    @follows(kraken_contigs_sp_id)
+    @follows(kraken_sp_id_consensus)
     @files(LISSERO_PARAMS)
     def lissero_contigs(infile, outfile, iso, sp_id_file):
         '''
@@ -851,13 +851,14 @@ if ARGS.subparser_name == 'run':
                      buildpath(OUTBASEDIR, i, 'sistr.txt'), i,
                      buildpath(OUTBASEDIR, i, 'species_id.txt'),
                      N_THREADS] for i in PATHS.index.values]
-    @follows(kraken_contigs_sp_id)
+    @follows(kraken_sp_id_consensus)
     @files(SISTR_PARAMS)
     def sistr_contigs(infile, outfile, iso, sp_id_file, cpus):
         '''
         Runs sistr on the contigs if the genus is Salmonella.
         '''
         species = get_species(sp_id_file, iso)
+        print(species)
         if species.split()[0] == 'Salmonella':
             run_sistr(infile, outfile, iso, cpus)
 
@@ -1156,8 +1157,14 @@ if ARGS.subparser_name == 'run':
 
 
     if ARGS.force_rebuild_summary_files:
+        outfile = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
+                            '_metadataAll.csv')
+        outfile_simple = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
+                                   '_metadataAll_simplified.csv')
+        os.remove(outfile)
+        os.remove(outfile_simple)
         pipeline_run(multiprocess=N_CPU,
-                     forcedtorun_tasks=[kraken_sp_id_consensus])
+                     forcedtorun_tasks=[summarise_intra_iso_results])
     else:
         pipeline_run(multiprocess=N_CPU)
 
