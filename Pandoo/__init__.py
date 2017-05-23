@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 __name__            = 'paando'
-__version__         = '0.1.88'
-__version_date__    = 'Fri 19th May, 2017'
+__version__         = '0.1.89'
+__version_date__    = 'Tue 23rd May, 2017'
 __description__     = ('Pandoo is a bioinformatics tool for for ' +\
                        'exploring and characterising bacterial genome ' +\
                        'data.  Input is paired-end reads and assemblies.  ' +\
-                       'Output is an NJ tree inferred from the assemblies ' +\
-                       '(using Andi and Quicktree) and a table of results ' +\
+                       'Output is an NJ tree/dendrogram inferred from the ' +\
+                       'assemblies (using mashtree) and a table of results ' +\
                        '(species ID, mlst, antimicrobial resistance genes, ' +\
-                       'plasmid replicon types, Virulence genes, ' +\
-                       'read and assembly ' +\
+                       'plasmid replicon types, virulence genes, etc., ' +\
+                       'plus read and assembly ' +\
                        'QC metrics).  Github repo and issue tracker: ' +\
                        'https://github.com/schultzm/pandoo/. ' +\
                        'Pypi repository: ' +\
