@@ -43,6 +43,7 @@ import ast
 from datetime import datetime
 import fileinput
 import glob
+import threading
 from multiprocessing import Pool, cpu_count
 from time import time
 import os
@@ -322,6 +323,8 @@ VERSION = '\nPando version: ' + __version__ +\
 if ARGS.version:
     print(VERSION, file=sys.stderr)
     sys.exit()
+
+LOCK = threading.Lock()
 
 if ARGS.subparser_name == 'check':
     def check_exists(cmd):
@@ -734,10 +737,11 @@ if ARGS.subparser_name == 'run':
                               # Need to add here the paths to contigs and reads
                               # if data are completely missing, return
                               # '' instead of 'indet' as the species name
-                              str(i)] for i in PATHS.index.values]
+                              str(i), buildpath(OUTBASEDIR, 'allspecies.txt')]
+                             for i in PATHS.index.values]
     @follows(kraken_contigs_sp_id)
     @files(KRAKEN_RESULTS_PARAMS)
-    def kraken_sp_id_consensus(infile_reads, outfile, infile_contigs, iso):
+    def kraken_sp_id_consensus(infile_reads, outfile, infile_contigs, iso, lockfile):
         '''
         Compare the results of Kraken on the reads and contigs.
         '''
@@ -762,6 +766,15 @@ if ARGS.subparser_name == 'run':
             species = species_cntgs
         else:
             species = 'indet'
+        # Write the species name to a shared outfile.  Lock and unlock
+        # it to protect multiple processes accessing it.
+        # Would need to remove this file on pipeline re-run else
+        # new runs will continue to append to the file...
+#         LOCK.acquire()
+#         with open(lockfile, 'a') as lockfiledest:
+#             lockfiledest.write(species+'\n')
+#         LOCK.release()
+
         sp_df = create_pandas_df({'Sp_krkn_FinalCall': species},
                                  iso)
         write_pandas_df(outfile, sp_df)
@@ -769,9 +782,19 @@ if ARGS.subparser_name == 'run':
     MLST_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
                     pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
                     buildpath(OUTBASEDIR, i, 'mlst.txt'), i,
-                    buildpath(OUTBASEDIR, i, 'species_id.txt')] for i in
-                   PATHS.index.values]
+                    buildpath(OUTBASEDIR, i, 'species_id.txt')]
+                   for i in PATHS.index.values]
     @follows(kraken_sp_id_consensus)
+    #development commented out
+    #need to nest part of the pipeline in a function so only run if certain
+    #species are detected. 
+#     def get_total_spp():
+#         SPP_TOTAL = list(set([line for line in open(buildpath(OUTBASEDIR,
+#                                                     'allspecies.txt')) \
+#                                                    .readlines()]))
+#         return SPP_TOTAL
+#     SPP_TOTAL = get_total_spp()
+#     @follows(get_total_spp)
     @files(MLST_PARAMS)
     def mlst_contigs(infile, outfile, iso, sp_id_file):
         '''

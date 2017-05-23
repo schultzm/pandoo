@@ -161,7 +161,7 @@ This module is used to generate the isolates.tab file.  Final output from this c
 
 **run module**
 
-This module is used to run the analysis pipeline.  In the example below, output will be a folder called **results** and we have selected to use the **tree option with -t** using a **JC** model of evolution (default for the -t option, but user can also choose from **Raw** or **Kimura**)::  
+This module is used to run the analysis pipeline.  In the example below, output will be a folder called **results** and we have selected to use the **tree option with -t** ::  
 
     pandoo run -h
     pandoo run -i isolates.tab -o results -t
@@ -188,7 +188,7 @@ https://jameshadfield.github.io/phandango/
 
 ![alt tag](http://bioinformatics.mdu.unimelb.edu.au/~schultzm/pandoo/phandango.png)
 
-The single NJ tree for the whole isolate set is inferred using the program **quicktree** from a distance matrix computed by **andi** using any of the evolutionary models JC, Raw or Kimura.  Andi infers the distance matrix from the assemblies (typically contigs.fa files).  The tree will not include isolates for which the assembly file is missing.
+The single NJ tree for the whole isolate set is inferred using the program **mashtree.pl** from a distance matrix computed by **mash**.  The tree will not include isolates for which the assembly file is missing.
 
 The summary table (csv) for all isolates combines the results from:
 
@@ -199,7 +199,7 @@ The summary table (csv) for all isolates combines the results from:
 5. Gene content profiles using unlimited number of user databases of resistance genes, plasmid rep genes, virulence genes, etc., using abricate (contigs, BLAST contigs against database, assembly based) and ariba (reads, MiniMapping to database, mapping based)  
 6. QC metrics using seqtk for reads and contigs  
 7. Reports software versions and paths to databases used in the analysis (for repeatability)  
-8. The pipeline is modular in that the user can choose not to perform the tree inference step with andi plus quicktree and/or the can choose not to perform the read mapping step using ariba  
+8. The pipeline is modular in that the user can choose not to perform the tree inference step and/or the user can choose not to perform the read mapping step using ariba  
 9. A flowchart is produced for the run (however, if the total path length of the results folders combined exceeds 16384 characters then the flowchart cannot be drawn)  
 10. The user can supply reads and/or contigs for each file.  The final tree will only include taxa for which contigs have been supplied  
 
