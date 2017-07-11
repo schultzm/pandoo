@@ -46,6 +46,7 @@ import glob
 import threading
 from multiprocessing import Pool, cpu_count
 from time import time
+import cProfile
 import os
 import random
 import shlex
@@ -171,8 +172,8 @@ SUBPARSER_RUN.add_argument('-i', '--isolate_paths', help='Tab-delimited.  \
 SUBPARSER_RUN.add_argument('-o', '--outdir', help='Output directory.',
                            required=True, dest='outdir')
 SUBPARSER_RUN.add_argument('-k', '--kraken_db', help='Path to Kraken db.  \
-                           Default=\'/bio/db/kraken//minikraken\'',
-                           default='/bio/db/kraken//minikraken',
+                           Default=\'/home/linuxbrew/db/kraken//minikraken\'',
+                           default='/home/linuxbrew/db/kraken//minikraken',
                            required=False,
                            dest='kraken_db')
 SUBPARSER_RUN.add_argument('-a', '--abricate_dbs', help='Path to Abricate \
@@ -477,10 +478,22 @@ if ARGS.subparser_name == 'run':
         Read a mini-pandas table containing the species id final call.
         '''
         species_df = read_pandas_df(sp_id_file)
-        return species_df.loc[iso].iloc[0]
+        # Return the str(cellvalue) to get past error if NaN (i.e., empty cell)
+        return str(species_df.loc[iso].iloc[0])
+
+    def remove_file(filename):
+        '''
+        Remove a file.
+        '''
+        if os.path.exists(filename):
+            os.remove(filename)
 
     print('\nEntered \'run\' subparser:', file=sys.stderr)
     OUTBASEDIR = os.path.abspath(ARGS.outdir)
+
+    # Prevent attempts on the rootdir!
+    if OUTBASEDIR == '/':
+        sys.exit('You are not allowed to write to '+OUTBASEDIR)
 
     def create_outfolder():
         '''
@@ -498,8 +511,7 @@ if ARGS.subparser_name == 'run':
                 print('\nResults will be output to directory:',
                       OUTBASEDIR, file=sys.stderr)
         except OSError:
-            sys.exit('\nYou do not have permissions to create',
-                     OUTBASEDIR)
+            sys.exit('\nYou do not have permissions to create '+OUTBASEDIR)
 
     create_outfolder()
 
@@ -615,21 +627,21 @@ if ARGS.subparser_name == 'run':
               'option) if using \'pandoo input\'.', file=sys.stderr)
         sys.exit('Exiting now.\n')
 
-    # Get out now if the isolate names are misinterpreted as numbers.
-    # Importing as string does not fix in the case of e.g., 14E7
-    # This is now only used for development purposes.
-    breaker_df = []
-    for ind in PATHS.index.values:
-        if isinstance(ind, str):
-            pass
-        else:
-            breaker_df.append(PATHS.loc[ind:ind])
-    if len(breaker_df) > 0:
-        sys.exit(print('The following rows have non-string type index in',
-                       'column 1.  Fix your input.tab file by wrapping these',
-                       'values in quotes or prefixing with a non-numeric', 
-                       'character:\n', pd.concat(breaker_df)),
-                       file=sys.stderr)
+#     # Get out now if the isolate names are misinterpreted as numbers.
+#     # Importing as string does not fix in the case of e.g., 14E7
+#     # This is now only used for development purposes.
+#     breaker_df = []
+#     for ind in PATHS.index.values:
+#         if isinstance(ind, str):
+#             pass
+#         else:
+#             breaker_df.append(PATHS.loc[ind:ind])
+#     if len(breaker_df) > 0:
+#         sys.exit(print('The following rows have non-string type index in',
+#                        'column 1.  Fix your input.tab file by wrapping these',
+#                        'values in quotes or prefixing with a non-numeric', 
+#                        'character:\n', pd.concat(breaker_df)),
+#                        file=sys.stderr)
 
     # Calculate the number of threads for multithreaded jobs.
     ISOS = PATHS.index.values
@@ -741,42 +753,55 @@ if ARGS.subparser_name == 'run':
                              for i in PATHS.index.values]
     @follows(kraken_contigs_sp_id)
     @files(KRAKEN_RESULTS_PARAMS)
-    def kraken_sp_id_consensus(infile_reads, outfile, infile_contigs, iso, lockfile):
+    def kraken_sp_id_consensus(infile_reads, outfile, infile_contigs, iso,
+                               lockfile):
         '''
         Compare the results of Kraken on the reads and contigs.
+        Make a final nomination of the species for downstream analysis.
         '''
         kraken_reads_sp_id_df = read_pandas_df(infile_reads)
         kraken_contigs_sp_id_df = read_pandas_df(infile_contigs)
         target_col_reads = 'Sp_krkn_reads_1'
         target_col_contigs = 'Sp_krkn_contigs_1'
-        if target_col_reads in kraken_reads_sp_id_df.columns and \
-                target_col_contigs in kraken_contigs_sp_id_df.columns:
+        # Sometimes there isn't one of the above two columns, so first test
+        # if it's there, and then read from the col if if exists.  
+        if target_col_reads in kraken_reads_sp_id_df.columns:# and \
             species_reads = kraken_reads_sp_id_df.loc[str(iso),
                                                       target_col_reads]
+        else:
+            species_reads = None
+        if target_col_contigs in kraken_contigs_sp_id_df.columns:
             species_cntgs = kraken_contigs_sp_id_df.loc[str(iso),
                                                         target_col_contigs]
+        else:
+            species_cntgs = None
+        # Now that we have the column or None if no column,
+        # go through some logic to determine the species final call.
+        if species_reads == None and species_cntgs == None:
+            species = ''
+        if species_reads is not None and species_cntgs is None:
+            species = species_reads
+        if species_reads is None and species_cntgs is not None:
+            species = species_cntgs
+        if species_reads is not None and species_cntgs is not None:
             if species_cntgs == species_reads:
                 species = species_cntgs
             else:
                 species = 'indet'
-        elif target_col_reads not in kraken_reads_sp_id_df.columns and \
-                target_col_contigs in kraken_contigs_sp_id_df.columns:
-            species_cntgs = kraken_contigs_sp_id_df.loc[str(iso),
-                                            target_col_contigs]
-            species = species_cntgs
-        else:
-            species = 'indet'
+#         print('reads', species_reads, 'contigs', species_cntgs, 'final', species)
+
         # Write the species name to a shared outfile.  Lock and unlock
         # it to protect multiple processes accessing it.
         # Would need to remove this file on pipeline re-run else
         # new runs will continue to append to the file...
-#         LOCK.acquire()
-#         with open(lockfile, 'a') as lockfiledest:
-#             lockfiledest.write(species+'\n')
-#         LOCK.release()
+        LOCK.acquire()
+        with open(lockfile, 'a') as lockfiledest:
+            lockfiledest.write(species+'\n')
+        LOCK.release()
 
         sp_df = create_pandas_df({'Sp_krkn_FinalCall': species},
                                  iso)
+#         print(sp_df)
         write_pandas_df(outfile, sp_df)
 
     MLST_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
@@ -901,6 +926,7 @@ if ARGS.subparser_name == 'run':
         '''
         Runs Abricate on the contigs.
         '''
+        print('abricate oufile:', outfile)
         run_abricate(infile, outfile, outfile_simple, iso, database, cutoff,
                      identity)
 
@@ -959,8 +985,8 @@ if ARGS.subparser_name == 'run':
         Take a list of dfs, join them and write them to file.  The infile
         list is reduced to only those files that exist in the directory.
         '''
-        dfs = [read_pandas_df(infile) for infile in infile_dfs_list if
-               os.path.exists(infile)]
+        dfs = [read_pandas_df(infile) for infile in infile_dfs_list
+               if os.path.exists(infile)]
         df2 = PATHS.loc[iso:iso, ['pathContigs', 'pathReads1',
                                   'pathReads2']]
         df3 = df2.fillna('No input file')
@@ -974,7 +1000,9 @@ if ARGS.subparser_name == 'run':
                              str(i)] for i in PATHS.index.values]
     if ARGS.ariba_on:
         @follows(mlst_contigs, abricate_contigs, seqtk_comp_contigs,
-                 seqtk_fqchk_reads, ariba_reads_minimap)
+                 seqtk_fqchk_reads, ariba_reads_minimap,
+                 legsta_contigs, lissero_contigs,
+                 meningotype_contigs, ngmaster_contigs, sistr_contigs)
         @files(RESULT_FILES_PER_ISO)
         # Add the file paths to the summary.csv file.
         def summarise_intra_iso_results(infolder, outfile,
@@ -983,8 +1011,9 @@ if ARGS.subparser_name == 'run':
             Take a list of all the results files for each isolate and 
             cbind them into on summary.csv pd.df for the isolate.
             '''
-            print('Gathering results files from '+infolder, file=sys.stderr)
-
+#             print('Gathering results files from '+infolder, file=sys.stderr)
+            remove_file(outfile)
+            remove_file(outfile_simple)
             # Generate summary.csv, including ariba table.
             infiles_complex = [buildpath(OUTBASEDIR, iso, i) for i in
                                ['kraken_contigs.txt',
@@ -1004,7 +1033,7 @@ if ARGS.subparser_name == 'run':
                                [buildpath(OUTBASEDIR, iso,
                                           'ariba_'+key+'_summary_melted.txt')
                                 for key, value in list(ARIBA_DBS.items())]]
-            print(infiles_complex)
+#             print(infiles_complex)
             # Requires the os.path.exists(infile) otherwise looks for 
             # ariba even if reads weren't there for ariba analysis
             write_summary_df_to_file(infiles_complex, outfile, iso)
@@ -1033,7 +1062,8 @@ if ARGS.subparser_name == 'run':
 
     else:
         @follows(mlst_contigs, abricate_contigs, seqtk_comp_contigs,
-                 seqtk_fqchk_reads)
+                 seqtk_fqchk_reads, legsta_contigs, lissero_contigs,
+                 meningotype_contigs, ngmaster_contigs, sistr_contigs)
         @files(RESULT_FILES_PER_ISO)
         # Add the file paths to the summary.csv file.
         def summarise_intra_iso_results(infolder, outfile, outfile_simple,
@@ -1042,8 +1072,9 @@ if ARGS.subparser_name == 'run':
             Take a list of all the results files for each isolate and cbind
             them into on summary.csv pd.df for the isolate.
             '''
-            print('Gathering results files from '+infolder, file=sys.stderr)
-
+#             print('Gathering results files from '+infolder, file=sys.stderr)
+            remove_file(outfile)
+            remove_file(outfile_simple)
             # Generate complex outfile.
             infiles_complex = [buildpath(OUTBASEDIR, iso, i) for i in
                        ['kraken_contigs.txt',
@@ -1096,12 +1127,15 @@ if ARGS.subparser_name == 'run':
             '''
             Take the infiles in infile_list and join them to a single df.
             '''
-            dfs = [read_pandas_df(infile) for infile in infile_list]
+#             dfs = 
             # Join along axis 0 (rows).
-            df2 = pd.concat(dfs, axis=0)
-            cols = [i for i in df2.columns.values]
-            df4 = df2.sort_index(axis=1) #this needs to be output to stdout?
-            write_pandas_df(outfile, df4)
+#             df2 = 
+#             cols = [i for i in df2.columns.values]
+#             df4 = df2.sort_index(axis=1) #this needs to be output to stdout?
+            write_pandas_df(outfile,
+                            pd.concat([read_pandas_df(infile)
+                                       for infile in infile_list],
+                                      axis=0))
 
         outfile = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
                             '_metadataAll.csv')
@@ -1179,19 +1213,16 @@ if ARGS.subparser_name == 'run':
 
 
     if ARGS.force_rebuild_summary_files:
-        outfile = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
-                            '_metadataAll.csv')
-        outfile_simple = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
-                                   '_metadataAll_simplified.csv')
-        if os.path.exists(outfile):
-            os.remove(outfile)
-        if os.path.exists(outfile_simple):
-            os.remove(outfile_simple)
+        remove_file(buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
+                              '_metadataAll.csv'))
+        remove_file(buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
+                              '_metadataAll_simplified.csv'))
+        remove_file(buildpath(OUTBASEDIR, 'allspecies.txt'))
         pipeline_run(multiprocess=N_CPU,
                      forcedtorun_tasks=[summarise_intra_iso_results])
     else:
+        remove_file(buildpath(OUTBASEDIR, 'allspecies.txt'))
         pipeline_run(multiprocess=N_CPU)
-
 
     print('\nLength of infile list as string: ' +
           str(len(', '.join([buildpath(OUTBASEDIR, i)
@@ -1200,7 +1231,9 @@ if ARGS.subparser_name == 'run':
 
     if len(', '.join([buildpath(OUTBASEDIR, i)
                       for i in PATHS.index.values])) < 16000:
-        pipeline_printout_graph(buildpath(OUTBASEDIR, 'flowchart.svg'))
+        pipeline_printout_graph(buildpath(OUTBASEDIR,
+                                          ISOLATE_PATHS_BASENAME +\
+                                          '_flowchart.svg'))
 
 
     if len(', '.join([buildpath(OUTBASEDIR, i)

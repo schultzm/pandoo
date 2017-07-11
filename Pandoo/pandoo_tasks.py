@@ -419,6 +419,17 @@ def run_mlst(assembly, outfile, isolate, species):
     '''
     Run Torsten's MLST program on the assembly.
     '''
+    def parse_MLST_output(output):
+        out = output
+        ncol = len(out)
+        mlst_formatted_dict = {'MLST_Scheme': out[0],
+                               'MLST_ST': out[1]}
+        k = 1
+        for i in range(3, ncol):
+            mlst_formatted_dict['MLST_Locus'+str(k)] = out[i]
+            k += 1
+        return mlst_formatted_dict
+
     if len(assembly) == 0:
         mlst_formatted_dict = {'MLST_Scheme': None, 'MLST_ST': None}
         k = 1
@@ -428,42 +439,26 @@ def run_mlst(assembly, outfile, isolate, species):
     if len(assembly) == 1:
         assembly = assembly[0]
         sp_scheme = None
-        if species in FORCE_MLST_SCHEME:
-            sp_scheme = FORCE_MLST_SCHEME[species]
-        elif species.split(' ')[0] in FORCE_MLST_SCHEME:
-            sp_scheme = FORCE_MLST_SCHEME[species.split(' ')[0]]
+        if isinstance(species, str):
+            if species in FORCE_MLST_SCHEME:
+                sp_scheme = FORCE_MLST_SCHEME[species]
+            elif species.split(' ')[0] in FORCE_MLST_SCHEME:
+                sp_scheme = FORCE_MLST_SCHEME[species.split(' ')[0]]
         if sp_scheme is not None:
-            print("species scheme is:", sp_scheme, file=sys.stderr)
+#             print("species scheme is:", sp_scheme, file=sys.stderr)
             cmd = 'mlst --scheme '+sp_scheme+' --quiet ' +\
                    assembly
             args_mlst = shlex.split(cmd)
             proc = Popen(args_mlst, stdout=PIPE)
             output = proc.stdout.read().decode('UTF-8')
-            mlst = output.rstrip().split('\n')
-            mlst = [line.strip().split('\t') for line in [_f for _f in
-                                                          mlst if _f]]
-            header = mlst[0]
-            data = mlst[1]
-            ncol = len(header)
-            mlst_formatted_dict = {'MLST_Scheme': data[1], 'MLST_ST': data[2]}
-            k = 1
-            for i in range(3, ncol):
-                locus = header[i]+'('+data[i]+')'
-                mlst_formatted_dict['MLST_Locus'+str(k)] = locus
-                k += 1
+            out = output.rstrip().split('\t')[1:]
+            mlst_formatted_dict = parse_MLST_output(out)
         else:
             cmd = 'mlst --quiet '+assembly
             args_mlst = shlex.split(cmd)
             proc = Popen(args_mlst, stdout=PIPE)
             output = proc.stdout.read().decode('UTF-8')
-            out = output.rstrip().split('\t')[1:]
-            ncol = len(out)
-            mlst_formatted_dict = {'MLST_Scheme': out[0],
-                                   'MLST_ST': out[1]}
-            k = 1
-            for i in range(3, ncol):
-                mlst_formatted_dict['MLST_Locus'+str(k)] = out[i]
-                k += 1
+            mlst_formatted_dict = parse_MLST_output(out)
 
     def get_mlst_version():
         '''
@@ -560,7 +555,7 @@ def run_meningotype(infile, outfile, isolate):
 
 def run_sistr(infile, outfile, isolate, cpus):
     '''
-    Run sistr on the infile. Only capture and report the serovar_antigen.
+    Run sistr on the infile. Only capture and report the serovar.
     '''
     if len(infile) == 0:
         sstr_result = create_pandas_df({}, isolate)
@@ -570,7 +565,7 @@ def run_sistr(infile, outfile, isolate, cpus):
         proc = Popen(args, stdout=PIPE)
         result = proc.stdout.read().decode('UTF-8')
         sstr_res = pd.read_json(StringIO(result))
-        sstr_out = {'sistr_serovar_antigen': sstr_res.loc[0,'serovar_antigen']}
+        sstr_out = {'sistr_serovar': sstr_res.loc[0,'serovar']}
         sstr_result = create_pandas_df(sstr_out, isolate)
 
     def sistr_version():

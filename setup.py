@@ -39,7 +39,7 @@ setup(
     include_package_data = True,
     install_requires = ['scipy==0.19.0',
                         'numpy==1.12.0',
-                        'pandas==0.19.2',
+                        'pandas==0.20.1',
                         'ete3==3.0.0b35',
                         'ruffus==2.6.3']
     )
