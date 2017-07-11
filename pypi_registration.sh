@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-git tag 0.1.90
+git tag 0.1.91
 git push --tags
 git add .
-git commit -m 'MLST was updated, added the legacy option'
+git commit -m 'Fixed the out bug on line 461 in pandoo_tasks.py'
 git push origin -u master
 python3 setup.py register -r pypitest
 python3 setup.py sdist upload -r pypitest

@@ -457,7 +457,7 @@ def run_mlst(assembly, outfile, isolate, species):
             cmd = 'mlst --quiet '+assembly
             args_mlst = shlex.split(cmd)
             proc = Popen(args_mlst, stdout=PIPE)
-            output = proc.stdout.read().decode('UTF-8')
+            out = proc.stdout.read().decode('UTF-8')
             mlst_formatted_dict = parse_MLST_output(out)
 
     def get_mlst_version():
