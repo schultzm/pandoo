@@ -367,6 +367,7 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
             cmd_kraken = 'kraken --threads '+str(threads)+' --db '+dbase +\
                          ' --fastq-input '+compression +\
                          '--paired --check-names '+infiles
+            sys.stderr.write(cmd_kraken)
             kraken = do_kraken(cmd_kraken)
         else:
             # If no read pairs in list, kraken is an empty list.
@@ -544,7 +545,7 @@ def run_meningotype(infile, outfile, isolate):
         '''
         args = shlex.split('meningotype --version')
         proc = Popen(args, stderr=PIPE)
-        version = proc.stderr.read().decode('UTF-8').rstrip().split('\n')[1]
+        version = proc.stderr.read().decode('UTF-8').rstrip().split('\n')[0]
         return {'softwareMENINGOTYPEversion': version}
 
     # Capture all dfs into a single df and then write to file.
