@@ -65,9 +65,9 @@ Add mashtree.pl to your path and ensure that mashtree.pl can be executed by typi
 Installing Pandoo
 -----------------------
 
-To perform any of these install steps **for all users, remove '--user'**.  The final symlink step is not required if installing for all users.  Pandoo is written for **python3** and installation requires **pip3** and **setuptools**.  To install the latest 'stable' version of pandoo for the current user only, do::  
+To perform any of these install steps **for all users, remove '--user'**.  The final symlink step is not required if installing for all users.  _Pandoo is written for **python3** and installation requires **pip3** and **setuptools**_.  To install the latest 'stable' version of pandoo for the current user only, do::  
 
-    pip3 install pandoo --user
+    pip3 install pandoo --user --upgrade-strategy "only-if-needed"
 
 To upgrade::  
 

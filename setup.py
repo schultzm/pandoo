@@ -37,9 +37,9 @@ setup(
     packages = ['Pandoo'],
     scripts = ['Pandoo/pandoo'],
     include_package_data = True,
-    install_requires = ['scipy==0.19.1',
-                        'numpy==1.13.1',
-                        'pandas==0.20.3',
-                        'ete3==3.0.0b35',
-                        'ruffus==2.6.3']
+    install_requires = ['scipy>=0.19.1',
+                        'numpy>=1.13.1',
+                        'pandas>=0.20.3',
+                        'ete3>=3.0.0b35',
+                        'ruffus>=2.6.3']
     )

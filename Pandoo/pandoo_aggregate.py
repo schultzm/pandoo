@@ -49,8 +49,17 @@ def read_pandas_df(infile):
     
 if __name__ == '__main__':
     df = read_pandas_df(INFILE)
-    extract_from = df[df['2017-01708'].str.contains('abricate_resfinder')]
-    print(extract_from)
+    for i in df.index.values:
+        print([item for item in
+               list(zip(df.loc[i,df.columns.to_series().str \
+                               .contains('abricate_resfinder_')].index.values,
+               df.loc[i,df.columns.to_series().str. \
+                      contains('abricate_resfinder_')].values))
+               if isinstance(item[1], str)])
+        print()
+#     print(df)
+#     extract_from = df[df['2017-01708'].str.contains('abricate_resfinder')]
+#     print(extract_from)
 #     print(extract_from)
 #     genes = df.loc['2017-01708', 'Sp_krkn_FinalCall']
 #     print(genes)
