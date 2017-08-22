@@ -27,8 +27,10 @@ import pandas as pd
 from pathlib import Path
 from io import StringIO
 import sys
+# import numpy as np
+import re
 
-INFILE = ('/home/schultzm/jobs/mdu/AMR_ongoing/rerun_results/fromstdin_metadataAll_simplified.csv')
+INFILE = ('/home/schultzm/jobs/mdu/AMR_ongoing/rerun_20170808_results/fromstdin_metadataAll_simplified.csv')
 PANDAS_INDEX_LABEL = 'Isolate'
 
 def read_pandas_df(infile):
@@ -41,25 +43,27 @@ def read_pandas_df(infile):
                                  .set_index(PANDAS_INDEX_LABEL)
     return df1
 
-
-# def aggregate_yes(colname, rowname, string_target, df):
-#     subset = df[df[rowname].str.contains(string_target)]
-#     print(subset)
-#     gene_yes = df.loc[colname, rowname]
+def create_summary_df(df):
+    db_prefix = 'abricate_resfinder_'
+    p = re.compile('_[^_]+$')
+    for idx in df.index.values:
+        genes = [item for item in
+                 list(zip(df.loc[idx,df.columns.to_series().str \
+                                 .contains(db_prefix)].index.values,
+                 df.loc[idx,df.columns.to_series().str. \
+                        contains(db_prefix)].values))
+                 if isinstance(item[1], str)]
+        
+        genes_2 = {'All genes': [p.sub('', gene[0].replace(db_prefix, ''))
+                                 for gene in genes],
+                   'Genes to be confirmed': [p.sub('', gene[0] \
+                                                   .replace(db_prefix, ''))
+                                             for gene in genes if
+                                             gene[1]=='maybe']}
+        df2 = pd.DataFrame([genes_2], index=[idx])
+        return df2
+    
     
 if __name__ == '__main__':
-    df = read_pandas_df(INFILE)
-    for i in df.index.values:
-        print([item for item in
-               list(zip(df.loc[i,df.columns.to_series().str \
-                               .contains('abricate_resfinder_')].index.values,
-               df.loc[i,df.columns.to_series().str. \
-                      contains('abricate_resfinder_')].values))
-               if isinstance(item[1], str)])
-        print()
-#     print(df)
-#     extract_from = df[df['2017-01708'].str.contains('abricate_resfinder')]
-#     print(extract_from)
-#     print(extract_from)
-#     genes = df.loc['2017-01708', 'Sp_krkn_FinalCall']
-#     print(genes)
+    out_df = create_summary_df(read_pandas_df(INFILE))
+    print(out_df)

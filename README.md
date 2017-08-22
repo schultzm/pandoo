@@ -33,45 +33,44 @@ An example **isolates.tab** file looks like this::
 Installing dependencies
 -----------------------
 
-The following packages need to be installed before pip3 installing Pandoo.  To install dependencies, do::  
+The following packages need to be installed before running pandoo.  To install dependencies, do something like this::  
 
-    cpan -i Moo
-    cpan -i List::MoreUtils
-    cpan -i Bio::Perl
+    cpanm -i Moo
+    cpanm -i List::MoreUtils
+    cpanm -i Bio::Perl
     brew tap homebrew/science
     brew tap tseemann/homebrew-bioinformatics-linux
     brew update
-    brew install mlst --HEAD
-    brew install abricate --HEAD
+    brew install mlst
+    brew install abricate
     brew install seqtk
     brew install mummer
     brew install bowtie2
     brew install cd-hit
-    brew install ariba
     brew install kraken
     pip install git+https://github.com/MDU-PHL/ngmaster.git #(see install instructions at https://github.com/MDU-PHL/ngmaster)
     pip install git+https://github.com/MDU-PHL/meningotype.git #(see install instructions at https://github.com/MDU-PHL/meningotype)
     pip3 install biopython
+    pip3 install ariba
     #install sistr from http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0147101 (location?)
-    #git clone https://github.com/MDU-PHL/legsta.git, then add it to your path so is executable with 'legsta'
+    git clone https://github.com/MDU-PHL/legsta.git # then add it to your path so is executable with 'legsta'
+    git clone https://github.com/MDU-PHL/LisSero.git # then add it to your path so is executable with 'LisSero.py'
+    git clone https://github.com/lskatz/mashtree.git # then add it to your path so is executable with 'mashtree.pl'
+    
 
 Follow the instructions at https://ccb.jhu.edu/software/kraken to set up the databases.
-
-Additionally, mashtree.pl needs to be installed. Follow the instructions at https://github.com/lskatz/mashtree
-Add mashtree.pl to your path and ensure that mashtree.pl can be executed by typing on the command line:
-    mashtree.pl
 
 
 Installing Pandoo
 -----------------------
 
 To perform any of these install steps **for all users, remove '--user'**.  The final symlink step is not required if installing for all users.  _Pandoo is written for **python3** and installation requires **pip3** and **setuptools**_.  To install the latest 'stable' version of pandoo for the current user only, do::  
-
+First update `python3`, `pip3`, `setuptools`.  Then try:
     pip3 install pandoo --user --upgrade-strategy "only-if-needed"
 
 To upgrade::  
 
-    pip3 install pandoo --user --upgrade
+    pip3 install pandoo --upgrade
 
 To install the latest, potentially unstable, bleeding-edge version::  
 
@@ -101,9 +100,14 @@ Now, symlink the packaged databases in site-packages above to the folder contain
     rm -r ~/.local/bin/VFDB*
     rm -r ~/.local/bin/plasmidfinder
 
-Now, check that the dependencies are in the path using::
+**If accidentally installed with pip2 or pip, do**::
+    pip uninstall pandoo
+
+Check that the dependencies are in the path using::
 
     pandoo check
+
+Add dependencies as required.
 
 Quickstart tutorial
 -------------------
