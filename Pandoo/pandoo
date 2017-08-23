@@ -83,6 +83,7 @@ from Pandoo.pandoo_tasks import (calc_threads,
                                       run_legsta,
                                       run_lissero,
                                       relabel_tree_tips)
+from Pandoo.pandoo_aggregate import create_summary_df
 from ruffus import (mkdir,
                     follows,
                     files,
@@ -883,26 +884,32 @@ if ARGS.subparser_name == 'run':
         if species.split()[0] == 'Salmonella':
             run_sistr(infile, outfile, iso, cpus)
 
-
     ABRICATE_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
                         pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
                         buildpath(OUTBASEDIR, i, 'abricate_'+key+'.txt'),
                         buildpath(OUTBASEDIR, i,
                                   'abricate_'+key+'_simple.txt'),
                         i, [key, value], ARGS.abricate_xoff,
-                        ARGS.abricate_id]
+                        ARGS.abricate_id,
+                        buildpath(OUTBASEDIR, i,
+                                  'abricate_'+key+'_aggregate_genes.txt')]
                        for i in PATHS.index.values
                        for key, value in list(ABRICATE_DBS.items())]
+#     print(ABRICATE_PARAMS)
     @follows(kraken_contigs_sp_id)
     @files(ABRICATE_PARAMS)
     def abricate_contigs(infile, outfile, outfile_simple, iso,
-                               database, cutoff, identity):
+                         database, cutoff, identity, aggregate_genes_file):
         '''
         Runs Abricate on the contigs.
+        Creates an abricate result table, and an aggregate summary table.
         '''
         print('abricate oufile:', outfile)
         run_abricate(infile, outfile, outfile_simple, iso, database, cutoff,
                      identity)
+        write_pandas_df(aggregate_genes_file,
+                        create_summary_df(read_pandas_df(outfile_simple),
+                                          'Abricate_'+database[0]+'_'))
 
 
     if ARGS.ariba_on:
@@ -1028,6 +1035,9 @@ if ARGS.subparser_name == 'run':
                               [buildpath(OUTBASEDIR, iso,
                                          'abricate_'+key+'_simple.txt')
                                for key, value in list(ABRICATE_DBS.items())] +
+                              [buildpath(OUTBASEDIR, iso,
+                                         'abricate_'+key+'_aggregate_genes.txt')
+                               for key, value in list(ABRICATE_DBS.items())] +
                                [buildpath(OUTBASEDIR, iso,
                                           'ariba_summary_melted.txt')
                                 for key, value in list(ARIBA_DBS.items())]]
@@ -1051,19 +1061,20 @@ if ARGS.subparser_name == 'run':
             remove_file(outfile_simple)
             # Generate complex outfile.
             infiles_complex = [buildpath(OUTBASEDIR, iso, i) for i in
-                       ['kraken_contigs.txt',
-                        'kraken_reads.txt',
-                        'species_id.txt',
-                        'mlst.txt',
-                        'ngmaster.txt',
-                        'meningotype.txt',
-                        'sistr.txt',
-                        'legsta.txt',
-                        'lissero.txt',
-                        'yield_contigs.txt',
-                        'yield_reads.txt'] +
-                       [buildpath(OUTBASEDIR, iso, 'abricate_'+key+'.txt')
-                        for key, value in list(ABRICATE_DBS.items())]]
+                               ['kraken_contigs.txt',
+                                'kraken_reads.txt',
+                                'species_id.txt',
+                                'mlst.txt',
+                                'ngmaster.txt',
+                                'meningotype.txt',
+                                'sistr.txt',
+                                'legsta.txt',
+                                'lissero.txt',
+                                'yield_contigs.txt',
+                                'yield_reads.txt'] +
+                               [buildpath(OUTBASEDIR, iso,
+                                          'abricate_'+key+'.txt')
+                                for key, value in list(ABRICATE_DBS.items())]]
             write_summary_df_to_file(infiles_complex, outfile, iso)
 
             # Generate simple outfile
@@ -1081,6 +1092,9 @@ if ARGS.subparser_name == 'run':
                         'yield_reads.txt'] +
                        [buildpath(OUTBASEDIR, iso,
                                   'abricate_'+key+'_simple.txt')
+                        for key, value in list(ABRICATE_DBS.items())] +
+                       [buildpath(OUTBASEDIR, iso,
+                                  'abricate_'+key+'_aggregate_genes.txt')
                         for key, value in list(ABRICATE_DBS.items())]]
             write_summary_df_to_file(infiles_simple, outfile_simple, iso)
 

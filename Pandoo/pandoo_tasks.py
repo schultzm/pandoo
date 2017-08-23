@@ -367,7 +367,7 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
             cmd_kraken = 'kraken --threads '+str(threads)+' --db '+dbase +\
                          ' --fastq-input '+compression +\
                          '--paired --check-names '+infiles
-            sys.stderr.write(cmd_kraken)
+            sys.stderr.write(cmd_kraken+'\n')
             kraken = do_kraken(cmd_kraken)
         else:
             # If no read pairs in list, kraken is an empty list.

@@ -4,8 +4,9 @@
     Uses python3.
 
     This script:
-        1. summarises a pandoo output table for LIMS
-        2. rules based on CARalert guidelines
+        1. aggregates all genes found into a column
+        2. aggregates all 'maybe found' genes into a dataframe column
+        3. rules based on CARalert guidelines
 
     Copyright (C) 2017 Mark B Schultz
     https://github.com/schultzm/pandoo
@@ -24,46 +25,27 @@
 '''
 
 import pandas as pd
-from pathlib import Path
-from io import StringIO
-import sys
-# import numpy as np
 import re
 
-INFILE = ('/home/schultzm/jobs/mdu/AMR_ongoing/rerun_20170808_results/fromstdin_metadataAll_simplified.csv')
-PANDAS_INDEX_LABEL = 'Isolate'
-
-def read_pandas_df(infile):
+def create_summary_df(dframe, db_prefix):
     '''
-    Will read in the csv and return a Pandas dataframe.
+    Returns a dataframe, with one row and a column each for all genes found
+    and genes to be confirmed.
     '''
-    contents = Path(infile).read_text()
-    df1 = pd.read_csv(StringIO(contents), header=0,
-                      converters={PANDAS_INDEX_LABEL: str}) \
-                                 .set_index(PANDAS_INDEX_LABEL)
-    return df1
-
-def create_summary_df(df):
-    db_prefix = 'abricate_resfinder_'
-    p = re.compile('_[^_]+$')
-    for idx in df.index.values:
+    pregx = re.compile('_[^_]+$')
+    for idx in dframe.index.values:
         genes = [item for item in
-                 list(zip(df.loc[idx,df.columns.to_series().str \
+                 list(zip(dframe.loc[idx,dframe.columns.to_series().str \
                                  .contains(db_prefix)].index.values,
-                 df.loc[idx,df.columns.to_series().str. \
+                 dframe.loc[idx,dframe.columns.to_series().str. \
                         contains(db_prefix)].values))
                  if isinstance(item[1], str)]
         
-        genes_2 = {'All genes': [p.sub('', gene[0].replace(db_prefix, ''))
-                                 for gene in genes],
-                   'Genes to be confirmed': [p.sub('', gene[0] \
-                                                   .replace(db_prefix, ''))
-                                             for gene in genes if
-                                             gene[1]=='maybe']}
+        genes_2 = {db_prefix+'all_genes':
+                   ':'.join([pregx.sub('', gene[0].replace(db_prefix, ''))
+                                 for gene in genes]),
+                   db_prefix+'genes_to_be_confirmed':
+                   ':'.join([pregx.sub('', gene[0].replace(db_prefix, ''))
+                             for gene in genes if gene[1]=='maybe'])}
         df2 = pd.DataFrame([genes_2], index=[idx])
         return df2
-    
-    
-if __name__ == '__main__':
-    out_df = create_summary_df(read_pandas_df(INFILE))
-    print(out_df)

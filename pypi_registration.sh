@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-git tag 0.1.96
+git tag 0.1.97
 git push --tags
 git add .
-git commit -m 'Updated readme dependency links'
+git commit -m 'Added aggregate-genes tool'
 git push origin -u master
 python3 setup.py register -r pypitest
 python3 setup.py sdist upload -r pypitest
