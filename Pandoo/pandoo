@@ -1012,6 +1012,11 @@ if ARGS.subparser_name == 'run':
                                           'abricate_'+key+'.txt')
                                 for key, value in list(ABRICATE_DBS.items())] +
                                [buildpath(OUTBASEDIR, iso,
+                                          'abricate_'+key +
+                                          '_aggregate_genes.txt')
+                                for key, value in list(ABRICATE_DBS.items())] +
+
+                               [buildpath(OUTBASEDIR, iso,
                                           'ariba_'+key+'_summary_melted.txt')
                                 for key, value in list(ARIBA_DBS.items())]]
 #             print(infiles_complex)
@@ -1036,7 +1041,8 @@ if ARGS.subparser_name == 'run':
                                          'abricate_'+key+'_simple.txt')
                                for key, value in list(ABRICATE_DBS.items())] +
                               [buildpath(OUTBASEDIR, iso,
-                                         'abricate_'+key+'_aggregate_genes.txt')
+                                         'abricate_'+key +
+                                         '_aggregate_genes.txt')
                                for key, value in list(ABRICATE_DBS.items())] +
                                [buildpath(OUTBASEDIR, iso,
                                           'ariba_summary_melted.txt')
@@ -1074,6 +1080,10 @@ if ARGS.subparser_name == 'run':
                                 'yield_reads.txt'] +
                                [buildpath(OUTBASEDIR, iso,
                                           'abricate_'+key+'.txt')
+                                for key, value in list(ABRICATE_DBS.items())] +
+                               [buildpath(OUTBASEDIR, iso,
+                                          'abricate_'+key +
+                                          '_aggregate_genes.txt')
                                 for key, value in list(ABRICATE_DBS.items())]]
             write_summary_df_to_file(infiles_complex, outfile, iso)
 
