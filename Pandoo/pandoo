@@ -359,6 +359,7 @@ if ARGS.subparser_name == 'check':
 
 # Code for the 'input' subparser:
 if ARGS.subparser_name == 'input':
+    print('Entered \'input\' subparser.\n', file=sys.stderr)
     def get_isolate_ids(id_file):
         '''
         Reads in the IDs from the request id_file and returns IDs as a list.
@@ -439,7 +440,8 @@ if ARGS.subparser_name == 'input':
                 n_cpus = len(params_assemblies_finder)
             pool = Pool(n_cpus)
             print('\n'+str(ARGS.n_cpus)+' CPUs requested.', file=sys.stderr)
-            print('Number of CPUs set to '+str(n_cpus)+'.\n', file=sys.stderr)
+            print('Number of CPUs for \'pandoo input\' set to '+str(n_cpus) +
+                  '.\n', file=sys.stderr)
             # 4. Iterate through the results from multiprocesses and print 
             #    to stdout.
             results = pool.map(assemblies_available, params_assemblies_finder)

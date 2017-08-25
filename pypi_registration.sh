@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-git tag 0.1.97
+git tag 0.1.98
 git push --tags
 git add .
-git commit -m 'Added aggregate-genes tool'
+git commit -m 'Parsing isos into categories'
 git push origin -u master
 python3 setup.py register -r pypitest
 python3 setup.py sdist upload -r pypitest

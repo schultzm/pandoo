@@ -25,6 +25,10 @@
 import pandas as pd
 import re
 
+# GENE_CLASSES = {'CPE': ['kpc', 'ndm', 'vim', 'imi', 'imp', 'oxa', 'ges', 'sme'],
+#                 '16S_methylase': ['armA', 'rmtA', 'rmtB', 'rmtC', 'rmtD', 'rmtE', 'rmtF', 'rmtG', 'rmtH', 'npmA'],
+#                 }
+
 def create_summary_df(dframe, db_prefix):
     '''
     Returns a dataframe, with one row and a column each for all genes found
@@ -34,16 +38,15 @@ def create_summary_df(dframe, db_prefix):
     for idx in dframe.index.values:
         genes = [item for item in
                  list(zip(dframe.loc[idx,dframe.columns.to_series().str \
-                                 .contains(db_prefix)].index.values,
+                                 .contains(db_prefix.lower())].index.values,
                  dframe.loc[idx,dframe.columns.to_series().str. \
-                        contains(db_prefix)].values))
+                        contains(db_prefix.lower())].values))
                  if isinstance(item[1], str)]
-        
         genes_2 = {db_prefix+'all_genes':
-                   ':'.join([pregx.sub('', gene[0].replace(db_prefix, ''))
+                   ':'.join([pregx.sub('', gene[0].replace(db_prefix.lower(), ''))
                                  for gene in genes]),
                    db_prefix+'genes_to_be_confirmed':
-                   ':'.join([pregx.sub('', gene[0].replace(db_prefix, ''))
+                   ':'.join([pregx.sub('', gene[0].replace(db_prefix.lower(), ''))
                              for gene in genes if gene[1]=='maybe'])}
         df2 = pd.DataFrame([genes_2], index=[idx])
         return df2
