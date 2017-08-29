@@ -217,6 +217,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
         for key, value in ab_results_simplified.items():
             if isinstance(value, list):
                 ab_results_simplified[key] = sorted(list(set(value)))
+
     def get_abricate_version():
         '''
         Get the Abricate software version.
