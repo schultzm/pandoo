@@ -3,7 +3,6 @@ setup.py
 Pandoo/__init__.py
 Pandoo/pandoo
 Pandoo/pandoo_tasks.py
-Pandoo/pandoo_aggregate.py
 Pandoo/reformat_vfdb_header.py
 graft Pandoo/CARD
 graft Pandoo/VFDB_core

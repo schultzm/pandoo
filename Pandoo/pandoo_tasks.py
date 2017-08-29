@@ -23,7 +23,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-
+from collections import defaultdict
 import os
 import math
 from multiprocessing import cpu_count
@@ -36,6 +36,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from io import StringIO
+import re
+
 
 def calc_threads(n_isos, ncores):
     '''
@@ -132,17 +134,20 @@ def create_pandas_df(dictionary, isolate):
     return pd.DataFrame([dictionary], index=[isolate])
 
 
-def run_abricate(infile, outfile, outfile_simple, isolate, dbase, cutoff,
+def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
                  identity):
     '''
     Runs abricate on the infile.
     '''
-#     print('run_abricate vals:', infile, outfile, outfile_simple, isolate, dbase, cutoff,
-#                  identity)
+    # Only replace the underscore at end of gene name if database is resfinder
+    # Use regex to find the replacement string
+    pregx = re.compile('')
+    if dbase[0].lower() == 'resfinder':
+        pregx = re.compile('_[^_]+$')
     if len(infile) == 0:
         ab_results = {}
-#         ab_results_simplified = {}
-        abricate_result = create_pandas_df(ab_results, isolate)
+        ab_results_simplified = {}
+#         abricate_result = create_pandas_df(ab_results, isolate)
         abricate_result = create_pandas_df(ab_results_simplified, isolate)
     if len(infile) == 1:
         infile = infile[0]
@@ -151,39 +156,47 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, cutoff,
         # default dbs are being used, the end of the dbase path will be 
         # 'default'.  Here we extract 'default' as a keyword which allows
         # correct building of the abricate run command.
-        dbases_path = os.path.split(dbase[1])
-        if os.path.split(dbase[1])[1] == 'default':
+#         dbases_path = os.path.split(dbase[1][0])
+        if os.path.split(dbase[1][0])[1] == 'default':
             print('Using pre-packaged abricate database '+dbase[0],
                   file=sys.stderr)
             cmd = 'abricate --db '+dbase[0] +\
-                  ' --minid '+str(identity)+' '+infile+' > '+outfile
+                  ' --minid '+str(75)+' --mincov '+str(0)+' '+infile +\
+                  ' > '+outfile
+            print(cmd, file=sys.stderr)
         else:
-            if not os.path.exists(dbase[1]):
-                sys.exit('Print unable to find '+dbase[1])
+            if not os.path.exists(dbase[1][0]):
+                sys.exit('Print unable to find '+dbase[1][0])
             else:
-                print('Using custom db '+ dbase[0]+' at '+dbase[1],
+                print('Using custom db '+ dbase[0]+' at '+dbase[1][0],
                       file=sys.stderr)
-                cmd = 'abricate --db '+dbase[0]+' --datadir '+dbase[1] +\
-                      ' --minid '+str(identity)+' '+infile+' > '+outfile
+                cmd = 'abricate --db '+dbase[0]+' --datadir '+dbase[1][0] +\
+                      ' --minid '+str(75)+' --mincov '+str(0)+' '+infile +\
+                      ' > '+outfile
+                print(cmd, file=sys.stderr)
         os.system(cmd)
         ab_data = pd.read_table(outfile, sep='\t', header=0)
         ab_results_df_list = []
-        ab_results_simplified = {}
-        ab_results_simple_aggregated = {}
+        ab_results_simplified = defaultdict(list)
+
+#         ab_results_simplified = {}
+#         ab_results_simple_aggreg = defaultdict(list)
         for i in ab_data.index.values:
             ab_results = {}
             # Generate the simplified dict
             simplifiedtable_key = 'abricate_'+dbase[0] +\
                                   '_'+ab_data.loc[i, 'GENE']
             if ab_data.loc[i, '%COVERAGE'] >= \
-            cutoff and ab_data.loc[i, '%IDENTITY'] == 100:
+            coverage and ab_data.loc[i, '%IDENTITY'] >= identity:
                 if simplifiedtable_key not in ab_results_simplified.items():
                     ab_results_simplified[simplifiedtable_key] = 'yes'
                 else:
                     ab_results_simplified[simplifiedtable_key] = 'maybe'
-            if ab_data.loc[i, '%COVERAGE'] < cutoff or \
-            ab_data.loc[i, '%IDENTITY'] < 100:
+                    ab_results_simplified['Abricate_'+dbase[0]+'_genes_to_be_confirmed'].append(pregx.sub('', ab_data.loc[i, 'GENE']))
+            if ab_data.loc[i, '%COVERAGE'] < coverage or \
+            ab_data.loc[i, '%IDENTITY'] < identity:
                 ab_results_simplified[simplifiedtable_key] = 'maybe'
+                ab_results_simplified['Abricate_'+dbase[0]+'_genes_to_be_confirmed'].append(pregx.sub('', ab_data.loc[i, 'GENE']))
 
             # Generate the complex (close to raw data) dict
             # Bind the coverage, ID and gaps into a single cell value.
@@ -201,6 +214,8 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, cutoff,
             ab_results = {}
             abricate_result = create_pandas_df(ab_results, isolate)
 
+        print(ab_results_simplified)
+
     def get_abricate_version():
         '''
         Get the Abricate software version.
@@ -209,14 +224,15 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, cutoff,
         proc = Popen(args, stdout=PIPE)
         version = proc.stdout.read().decode('UTF-8').rstrip().split('\n')[0]
         return {'softwareAbricateVersion_'+dbase[0]: version,
-                'softwareAbricateDB_'+dbase[0]: dbase[1]+'/'+dbase[0],
-                'softwareAbricateSettings_'+dbase[0]: 'COV'+str(cutoff) +\
+                'softwareAbricateDB_'+dbase[0]: dbase[1][0]+'/'+dbase[0],
+                'softwareAbricateSettings_'+dbase[0]: 'COV'+str(coverage) +\
                 '_ID'+str(identity)}
 
     # Bind the version and the results dataframes.
     # NB: writing of the outfile below will overwrite the full 
     # abricate results table as it was written when redirected from stdout.
     # write both simple ('yes', 'maybe') and complex ('near raw') dataframes.
+
     version_df = create_pandas_df(get_abricate_version(), isolate)
     abricate_df = pd.concat([abricate_result, version_df], axis=1)
     write_pandas_df(outfile, abricate_df)
