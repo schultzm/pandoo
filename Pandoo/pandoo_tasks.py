@@ -178,10 +178,10 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
         ab_data = pd.read_table(outfile, sep='\t', header=0)
         ab_results_df_list = []
         ab_results_simplified = defaultdict(list)
-
 #         ab_results_simplified = {}
 #         ab_results_simple_aggreg = defaultdict(list)
         for i in ab_data.index.values:
+            ab_results_simplified['Abricate_'+dbase[0]+'_all_genes'].append(pregx.sub('', ab_data.loc[i, 'GENE']))
             ab_results = {}
             # Generate the simplified dict
             simplifiedtable_key = 'abricate_'+dbase[0] +\
@@ -214,8 +214,9 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
             ab_results = {}
             abricate_result = create_pandas_df(ab_results, isolate)
 
-        print(ab_results_simplified)
-
+        for key, value in ab_results_simplified.items():
+            if isinstance(value, list):
+                ab_results_simplified[key] = sorted(list(set(value)))
     def get_abricate_version():
         '''
         Get the Abricate software version.

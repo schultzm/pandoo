@@ -898,12 +898,12 @@ if ARGS.subparser_name == 'run':
     @follows(kraken_contigs_sp_id)
     @files(ABRICATE_PARAMS)
     def abricate_contigs(infile, outfile, outfile_simple, iso,
-                         database, coverage, identity, aggregate_genes_file):
+                         database, coverage, identity):
         '''
         Runs Abricate on the contigs.
         Creates an abricate result table, and an aggregate summary table.
         '''
-        print('abricate oufile:', outfile)
+        print('abricate oufile:', outfile, file=sys.stderr)
         run_abricate(infile, outfile, outfile_simple, iso, database, coverage,
                      identity)
 
