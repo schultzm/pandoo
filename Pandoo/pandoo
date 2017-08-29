@@ -522,12 +522,12 @@ if ARGS.subparser_name == 'run':
         if os.path.exists(ARGS.isolate_paths):
             PATHS = get_paths(ARGS.isolate_paths)
             print('Reading input data from',
-                  os.path.abspath(ARGS.isolate_paths))
+                  os.path.abspath(ARGS.isolate_paths), file=sys.stderr)
             if not sys.stdin.isatty():
-                print('Ignoring input from stdin.')
+                print('Ignoring input from stdin.', file=sys.stderr)
     elif not sys.stdin.isatty():
         PATHS = get_paths(sys.stdin.read())
-        print('Reading input data from stdin.')
+        print('Reading input data from stdin.', file=sys.stderr)
     else:
         sys.exit('\n...but file of file names ' +\
                  'could not found from argparse or stdin.\n\nExiting now.\n')
@@ -540,18 +540,19 @@ if ARGS.subparser_name == 'run':
         '''
         if ARGS.abricate_dbs is None:
             args = shlex.split('abricate --list')
-            proc = Popen(args, stderr=PIPE)
+            proc = Popen(args, stdout=PIPE)
             # Find all the default databases in abricate.
-            dbs = [(i.replace(':','').split()[0], 'default')
-                   for i in proc.stderr.read().decode('UTF-8').split('\n')
-                   if len(i) > 0]
-            # Dump the abricate database called abricate
-            dbs = [j for j in dbs if j[0]!='abricate']
-            db_dict = {key: value for (key, value) in dbs}
+            # Create a dict of database_name: value_list
+            # where value_list is ['default', nseqs, dateofdbcreation]
+            # and the value_list is not empty.
+            db_dict = {item[0]: ['default']+item[1:] for item in
+                        [items.split('\t') for items in proc.stdout.read() \
+                         .decode('UTF-8').split('\n')[1:]]
+                       if len(item[1:]) > 0}
             print('\nAbricate analyses to be run using the following ' +
                   'databases:', file=sys.stderr)
-            for key in db_dict.items():
-                print(': '.join(key), file=sys.stderr)
+            for key, value in db_dict.items():
+                print(key, '–', value[0], file=sys.stderr)
             return db_dict
         else:
             try:
@@ -560,7 +561,7 @@ if ARGS.subparser_name == 'run':
                       'databases:', file=sys.stderr)
                 for key, value in db_dict.items():
                     print(key, value)
-                    db_dict[key] = os.path.abspath(value)
+                    db_dict[key] = [os.path.abspath(value),'','']
                 return db_dict
             except:
                 sys.exit('Malformed python dictionary input to ' +
@@ -897,7 +898,6 @@ if ARGS.subparser_name == 'run':
                                   'abricate_'+key+'_aggregate_genes.txt')]
                        for i in PATHS.index.values
                        for key, value in list(ABRICATE_DBS.items())]
-#     print(ABRICATE_PARAMS)
     @follows(kraken_contigs_sp_id)
     @files(ABRICATE_PARAMS)
     def abricate_contigs(infile, outfile, outfile_simple, iso,

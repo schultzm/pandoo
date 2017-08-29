@@ -137,9 +137,11 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, cutoff,
     '''
     Runs abricate on the infile.
     '''
+#     print('run_abricate vals:', infile, outfile, outfile_simple, isolate, dbase, cutoff,
+#                  identity)
     if len(infile) == 0:
         ab_results = {}
-        ab_results_simplified = {}
+#         ab_results_simplified = {}
         abricate_result = create_pandas_df(ab_results, isolate)
         abricate_result = create_pandas_df(ab_results_simplified, isolate)
     if len(infile) == 1:
@@ -167,6 +169,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, cutoff,
         ab_data = pd.read_table(outfile, sep='\t', header=0)
         ab_results_df_list = []
         ab_results_simplified = {}
+        ab_results_simple_aggregated = {}
         for i in ab_data.index.values:
             ab_results = {}
             # Generate the simplified dict

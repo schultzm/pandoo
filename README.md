@@ -33,7 +33,7 @@ An example **isolates.tab** file looks like this::
 Installing dependencies
 -----------------------
 
-The following packages need to be installed before running pandoo.  To install dependencies, do something like this::  
+The following packages need to be installed before running pandoo.  To install dependencies, do something like this (you may need to add '--user' after pip3 install commands if you don't have admin privileges)::  
 
     cpanm -i Moo
     cpanm -i List::MoreUtils
@@ -48,6 +48,7 @@ The following packages need to be installed before running pandoo.  To install d
     brew install bowtie2
     brew install cd-hit
     brew install kraken
+    brew install graphviz
     pip install git+https://github.com/MDU-PHL/ngmaster.git #(see install instructions at https://github.com/MDU-PHL/ngmaster)
     pip install git+https://github.com/MDU-PHL/meningotype.git #(see install instructions at https://github.com/MDU-PHL/meningotype)
     pip3 install biopython
@@ -66,7 +67,7 @@ Installing Pandoo
 
 To perform any of these install steps **for all users, remove '--user'**.  The final symlink step is not required if installing for all users.  _Pandoo is written for **python3** and installation requires **pip3** and **setuptools**_.  To install the latest 'stable' version of pandoo for the current user only, do::  
 First update `python3`, `pip3`, `setuptools`.  Then try:
-    pip3 install pandoo --user --upgrade-strategy "only-if-needed"
+    pip3 install pandoo --user
 
 To upgrade::  
 
