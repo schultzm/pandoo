@@ -131,7 +131,7 @@ SUBPARSER_INPUT.add_argument('-i', '--isolate_names', help='Path to file \
                              containing isolate names or IDs, one per line.  \
                              Default=\'isolates.txt\'. Each line contains an \
                              isolate ID.', default='isolates.txt',
-                             dest='isolate_names', required=True)
+                             dest='isolate_names', required=False)
 SUBPARSER_INPUT.add_argument('-a', '--assemblies_dir', help='Root-directory \
                              containing the assemblies (contigs). Default = \
                              \'/mnt/seq/MDU/QC/\'', default='/mnt/seq/MDU/QC/',
@@ -415,20 +415,14 @@ if ARGS.subparser_name == 'input':
         Column 3 - path to read1.fq.gz
         Column 4 - path to read2.fq.gz
         '''
-        if os.path.exists(os.path.abspath(ARGS.isolate_names)):
-            # 1. Read in the isolate_IDs from a file.
-            isolates = get_isolate_ids(os.path.abspath(ARGS.isolate_names))
+        def build_it(isolates): ## 'isolates' is a list
             if len(isolates) == 0:
-                sys.exit('No input data in' +
-                         os.path.abspath(ARGS.isolate_names))
-            # 2. Set the parameters tuples list for the assemblies component to
-            #    use in assemblies_available().
+                sys.exit('No data to process.\nCheck input isolate list.\n' +
+                         'Exiting now.\n')
             params_assemblies_finder = [(ID,
                                          os.path.abspath(ARGS.assemblies_dir),
                                          ARGS.wildcard_expansion_off) for ID
                                         in isolates]
-            # 3. Set the pool size based on the number of 
-            # CPUs requested and the number of isolates
             if ARGS.n_cpus <= 0:
                 sys.exit('Number of CPUs must be greater than or equal to 1')
             if ARGS.n_cpus > cpu_count():
@@ -441,8 +435,6 @@ if ARGS.subparser_name == 'input':
             print('\n'+str(ARGS.n_cpus)+' CPUs requested.', file=sys.stderr)
             print('Number of CPUs for \'pandoo input\' set to '+str(n_cpus) +
                   '.\n', file=sys.stderr)
-            # 4. Iterate through the results from multiprocesses and print 
-            #    to stdout.
             results = pool.map(assemblies_available, params_assemblies_finder)
             results.sort()
             for result in results:
@@ -463,6 +455,15 @@ if ARGS.subparser_name == 'input':
                                                       .abspath(ARGS.readsdir))
                         output = [assembly[0], assembly[1], reads_paths]
                     print('\t'.join(output))
+
+        if os.path.exists(os.path.abspath(ARGS.isolate_names)):
+            if not sys.stdin.isatty():
+                print('Ignoring input from stdin.', file=sys.stderr)
+            isolates = get_isolate_ids(os.path.abspath(ARGS.isolate_names))
+            build_it(isolates)
+        elif not sys.stdin.isatty(): ## Check sys.stdin is a 'tty' (no stdin)
+            isolates = list(set(sys.stdin.read().split()))
+            build_it(isolates)
         else:
             sys.exit('\nNothing to do: file \'' +
                      os.path.abspath(ARGS.isolate_names) +

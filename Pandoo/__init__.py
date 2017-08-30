@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 __name__            = 'paando'
-__version__         = '0.2.2'
+__version__         = '0.2.3'
 __version_date__    = 'Wed 30th August, 2017'
 __description__     = ('Pandoo is a bioinformatics tool for for ' +\
                        'exploring and characterising bacterial genome ' +\

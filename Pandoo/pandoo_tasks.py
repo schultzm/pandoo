@@ -388,7 +388,7 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
             cmd_kraken = 'kraken --threads '+str(threads)+' --db '+dbase +\
                          ' --fastq-input '+compression +\
                          '--paired --check-names '+infiles
-#             sys.stderr.write(cmd_kraken+'\n')
+            sys.stderr.write(cmd_kraken+'\n')
             kraken = do_kraken(cmd_kraken)
         else:
             # If no read pairs in list, kraken is an empty list.
@@ -544,7 +544,7 @@ def run_meningotype(infile, outfile, isolate):
     if len(infile) == 1:
         infile = infile[0]
         # Run meningotype and capture the output from the screen as pandas df.
-        args = shlex.split('meningotype '+infile)
+        args = shlex.split('meningotype --mlst --porB --bast --finetype '+infile)
         proc = Popen(args, stdout=PIPE)
         result = proc.stdout.read().decode('UTF-8')
         mng_res = pd.read_csv(StringIO(result), header=0, sep='\t')
