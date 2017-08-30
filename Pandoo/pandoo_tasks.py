@@ -163,7 +163,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
             cmd = 'abricate --db '+dbase[0] +\
                   ' --minid '+str(75)+' --mincov '+str(0)+' '+infile +\
                   ' > '+outfile
-            print(cmd, file=sys.stderr)
+#             print(cmd, file=sys.stderr)
         else:
             if not os.path.exists(dbase[1][0]):
                 sys.exit('Print unable to find '+dbase[1][0])
@@ -173,7 +173,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
                 cmd = 'abricate --db '+dbase[0]+' --datadir '+dbase[1][0] +\
                       ' --minid '+str(75)+' --mincov '+str(0)+' '+infile +\
                       ' > '+outfile
-                print(cmd, file=sys.stderr)
+#                 print(cmd, file=sys.stderr)
         os.system(cmd)
         ab_data = pd.read_table(outfile, sep='\t', header=0)
         ab_results_df_list = []
@@ -388,7 +388,7 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
             cmd_kraken = 'kraken --threads '+str(threads)+' --db '+dbase +\
                          ' --fastq-input '+compression +\
                          '--paired --check-names '+infiles
-            sys.stderr.write(cmd_kraken+'\n')
+#             sys.stderr.write(cmd_kraken+'\n')
             kraken = do_kraken(cmd_kraken)
         else:
             # If no read pairs in list, kraken is an empty list.
@@ -442,21 +442,20 @@ def run_mlst(assembly, outfile, isolate, species):
     Run Torsten's MLST program on the assembly.
     '''
     def parse_MLST_output(output):
-        out = output
-        ncol = len(out)
-        mlst_formatted_dict = {'MLST_Scheme': out[0],
-                               'MLST_ST': out[1]}
+        ncol = len(output)
+        mlst_formatted_dict = {'MLST_Scheme': output[0],
+                               'MLST_ST': output[1]}
         k = 1
-        for i in range(3, ncol):
-            mlst_formatted_dict['MLST_Locus'+str(k)] = out[i]
+        for i in range(2, ncol):
+            mlst_formatted_dict['MLST_Locus'+str(k)] = output[i]
             k += 1
         return mlst_formatted_dict
 
     if len(assembly) == 0:
-        mlst_formatted_dict = {'MLST_Scheme': None, 'MLST_ST': None}
+        mlst_formatted_dict = {'MLST_Scheme': '', 'MLST_ST': ''}
         k = 1
-        for i in range(3, 10):
-            mlst_formatted_dict['MLST_Locus'+str(k)] = None
+        for i in range(2, 9):
+            mlst_formatted_dict['MLST_Locus'+str(k)] = ''
             k += 1
     if len(assembly) == 1:
         assembly = assembly[0]
@@ -467,7 +466,6 @@ def run_mlst(assembly, outfile, isolate, species):
             elif species.split(' ')[0] in FORCE_MLST_SCHEME:
                 sp_scheme = FORCE_MLST_SCHEME[species.split(' ')[0]]
         if sp_scheme is not None:
-#             print("species scheme is:", sp_scheme, file=sys.stderr)
             cmd = 'mlst --scheme '+sp_scheme+' --quiet ' +\
                    assembly
             args_mlst = shlex.split(cmd)
@@ -757,7 +755,7 @@ def relabel_tree_tips(tree, out, matrix):
     tree.set_outgroup(tree.get_midpoint_outgroup())
     tree.write(outfile=out, format=1)
     print('Tree file at '+out, file=sys.stderr)
-    print(tree)
+    print(tree, file=sys.stderr)
 
 
 def symlink_contigs(infile, outfile):

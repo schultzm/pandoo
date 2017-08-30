@@ -559,7 +559,7 @@ if ARGS.subparser_name == 'run':
                 print('\nAbricate analyses to be run using the following ' +
                       'databases:', file=sys.stderr)
                 for key, value in db_dict.items():
-                    print(key, value)
+                    print(key, value, file=sys.stderr)
                     db_dict[key] = [os.path.abspath(value),'','']
                 return db_dict
             except:
