@@ -452,11 +452,8 @@ def run_mlst(assembly, outfile, isolate, species):
         return mlst_formatted_dict
 
     if len(assembly) == 0:
-        mlst_formatted_dict = {'MLST_Scheme': '', 'MLST_ST': ''}
-        k = 1
-        for i in range(2, 9):
-            mlst_formatted_dict['MLST_Locus'+str(k)] = ''
-            k += 1
+        mlst_formatted_dict = {}
+
     if len(assembly) == 1:
         assembly = assembly[0]
         sp_scheme = None

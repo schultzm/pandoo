@@ -130,7 +130,7 @@ SUBPARSER_INPUT = SUBPARSERS.add_parser('input', help='Generate input table',
 SUBPARSER_INPUT.add_argument('-i', '--isolate_names', help='Path to file \
                              containing isolate names or IDs, one per line.  \
                              Default=\'isolates.txt\'. Each line contains an \
-                             isolate ID.', default='isolates.txt',
+                             isolate ID.',
                              dest='isolate_names', required=False)
 SUBPARSER_INPUT.add_argument('-a', '--assemblies_dir', help='Root-directory \
                              containing the assemblies (contigs). Default = \
@@ -160,7 +160,7 @@ SUBPARSER_RUN = SUBPARSERS.add_parser('run', help='Run the pandoo \
                                       '[options]', description='Run the \
                                       pandoo pipeline.')
 SUBPARSER_RUN.add_argument('-i', '--isolate_paths', help='Tab-delimited.  \
-                           No header! Each line contains(\'\\t\'=tab) \
+                           No header. Each line contains(\'\\t\'=tab) \
                            in this order:\
                            isolate_ID\\tPathToContigs\\tPathToReads1\\t' +
                            'PathToReads2.\
@@ -456,11 +456,12 @@ if ARGS.subparser_name == 'input':
                         output = [assembly[0], assembly[1], reads_paths]
                     print('\t'.join(output))
 
-        if os.path.exists(os.path.abspath(ARGS.isolate_names)):
-            if not sys.stdin.isatty():
-                print('Ignoring input from stdin.', file=sys.stderr)
-            isolates = get_isolate_ids(os.path.abspath(ARGS.isolate_names))
-            build_it(isolates)
+        if ARGS.isolate_names:
+            if os.path.exists(os.path.abspath(ARGS.isolate_names)):
+                if not sys.stdin.isatty():
+                    print('Ignoring input from stdin.', file=sys.stderr)
+                isolates = get_isolate_ids(os.path.abspath(ARGS.isolate_names))
+                build_it(isolates)
         elif not sys.stdin.isatty(): ## Check sys.stdin is a 'tty' (no stdin)
             isolates = list(set(sys.stdin.read().split()))
             build_it(isolates)
