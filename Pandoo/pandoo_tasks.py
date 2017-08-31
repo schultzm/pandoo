@@ -345,12 +345,12 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
         infiles.
         '''
         cmd_krk_r = 'kraken-report'
-        cmd_grep = "grep -P '\tS\t'"
+        cmd_grep = "grep -P '\\tS\\t'"
         cmd_sort = 'sort -k 1 -r'
         cmd_head = 'head -3'
         cmd_full = cmd_kraken+' | '+cmd_krk_r+' | ' +\
                    cmd_grep+' | '+cmd_sort+' | '+cmd_head
-        sys.stderr.write(cmd_full)
+        sys.stderr.write(cmd_full+'\n')
         output = check_output(cmd_full, shell=True)
         output2 = output.decode('UTF-8').split('\n')
         kraken = [line.strip().split('\t') for line
