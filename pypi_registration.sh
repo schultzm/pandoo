@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 cp README.md README
-git tag 0.2.4
+git tag 0.2.5
 git push --tags
 git add .
 git commit -m 'Fixed MLST bug'

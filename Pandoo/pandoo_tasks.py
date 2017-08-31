@@ -28,7 +28,7 @@ import os
 import math
 from multiprocessing import cpu_count
 import shlex
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, check_output
 import sys
 import glob
 from ete3 import Tree
@@ -224,7 +224,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
         '''
         args = shlex.split('abricate -v')
         proc = Popen(args, stdout=PIPE)
-        version = proc.stdout.read().decode('UTF-8').rstrip().split('\n')[0]
+        version = proc.communicate()[0].decode('UTF-8').rstrip().split('\n')[0]
         return {'softwareAbricateVersion_'+dbase[0]: version,
                 'softwareAbricateDB_'+dbase[0]: dbase[1][0]+'/'+dbase[0],
                 'softwareAbricateSettings_'+dbase[0]: 'COV'+str(coverage) +\
@@ -315,7 +315,7 @@ def run_seqtk_fqchk(infiles, outfile, isolate):
         args2 = shlex.split(cmd2)
         proc = Popen(args, stdout=PIPE, stderr=PIPE)
         proc2 = Popen(args2, stdin=proc.stdout, stdout=PIPE)
-        output = proc2.stdout.read().decode('UTF-8')
+        output = proc2.communicate()[0].decode('UTF-8')
         metrics[pfx+'nReads'] = int(int(output)/4)
 
         # Get the mode read length.
@@ -348,25 +348,13 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
         cmd_grep = "grep -P '\tS\t'"
         cmd_sort = 'sort -k 1 -r'
         cmd_head = 'head -3'
-        # Split the cmds using shlex, store in args.
-        args_kraken = shlex.split(cmd_kraken)
-        args_krk_report = shlex.split(cmd_krk_r)
-        args_grep = shlex.split(cmd_grep)
-        args_sort = shlex.split(cmd_sort)
-        args_head = shlex.split(cmd_head)
-
-        # Pipe the output of one args to another.
-        proc1 = Popen(args_kraken, stdout=PIPE)
-        proc2 = Popen(args_krk_report, stdin=proc1.stdout, stdout=PIPE,
-                      stderr=PIPE)
-        proc3 = Popen(args_grep, stdin=proc2.stdout, stdout=PIPE, stderr=PIPE)
-        proc4 = Popen(args_sort, stdin=proc3.stdout, stdout=PIPE, stderr=PIPE)
-        proc5 = Popen(args_head, stdin=proc4.stdout, stdout=PIPE, stderr=PIPE)
-
-        output = proc5.stdout.read().decode('UTF-8')
-        kraken = output.rstrip().split('\n')
+        cmd_full = cmd_kraken+' | '+cmd_krk_r+' | ' +\
+                   cmd_grep+' | '+cmd_sort+' | '+cmd_head
+        sys.stderr.write(cmd_full)
+        output = check_output(cmd_full, shell=True)
+        output2 = output.decode('UTF-8').split('\n')
         kraken = [line.strip().split('\t') for line
-                  in [_f for _f in kraken if _f]]
+                  in [_f for _f in output2 if _f]]
         return kraken
 
     if fmt == 'reads':
@@ -377,7 +365,7 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
                 # Compression test based on file extension using linux 'file'.
                 args = shlex.split('file '+i)
                 proc = Popen(args, stdout=PIPE)
-                f_fmt = proc.stdout.read().decode('UTF-8').rstrip().split()
+                f_fmt = proc.communicate()[0].decode('UTF-8').rstrip().split()
                 if 'gzip' in f_fmt:
                     compression = '--gzip-compressed '
                     break
@@ -388,7 +376,6 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
             cmd_kraken = 'kraken --threads '+str(threads)+' --db '+dbase +\
                          ' --fastq-input '+compression +\
                          '--paired --check-names '+infiles
-            sys.stderr.write(cmd_kraken+'\n')
             kraken = do_kraken(cmd_kraken)
         else:
             # If no read pairs in list, kraken is an empty list.
@@ -427,7 +414,7 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
         '''
         args = shlex.split('kraken -v')
         proc = Popen(args, stdout=PIPE)
-        version = proc.stdout.read().decode('UTF-8').rstrip().split('\n')[0]
+        version = proc.communicate()[0].decode('UTF-8').rstrip().split('\n')[0]
         return {'softwareKrakenVersion_'+fmt: version,
                 'softwareKrakenDB_'+fmt: dbase}
 
@@ -467,14 +454,14 @@ def run_mlst(assembly, outfile, isolate, species):
                    assembly
             args_mlst = shlex.split(cmd)
             proc = Popen(args_mlst, stdout=PIPE)
-            output = proc.stdout.read().decode('UTF-8')
+            output = proc.communicate()[0].decode('UTF-8')
             out = output.rstrip().split('\t')[1:]
             mlst_formatted_dict = parse_MLST_output(out)
         else:
             cmd = 'mlst --quiet '+assembly
             args_mlst = shlex.split(cmd)
             proc = Popen(args_mlst, stdout=PIPE)
-            output = proc.stdout.read().decode('UTF-8')
+            output = proc.communicate()[0].decode('UTF-8')
             out = output.rstrip().split('\t')[1:]
             mlst_formatted_dict = parse_MLST_output(out)
 
@@ -484,7 +471,7 @@ def run_mlst(assembly, outfile, isolate, species):
         '''
         args = shlex.split('mlst -v')
         proc = Popen(args, stdout=PIPE)
-        version = proc.stdout.read().decode('UTF-8').rstrip().split('\n')[0]
+        version = proc.communicate()[0].decode('UTF-8').rstrip().split('\n')[0]
         return {'softwareMLSTversion': version}
 
     mlst_version = create_pandas_df(get_mlst_version(), isolate)
@@ -504,7 +491,7 @@ def run_ngmaster(infile, outfile, isolate):
         # Run ngmaster and capture the output from the screen as a pandas df.
         args = shlex.split('ngmaster '+infile)
         proc = Popen(args, stdout=PIPE)
-        result = proc.stdout.read().decode('UTF-8')
+        result = proc.communicate()[0].decode('UTF-8')
         ng_res = pd.read_csv(StringIO(result), header=0, sep='\t')
         # Replace the path to the contigs in first col with the isolate name.
         ng_res.iloc[0, 0] = isolate
@@ -543,7 +530,7 @@ def run_meningotype(infile, outfile, isolate):
         # Run meningotype and capture the output from the screen as pandas df.
         args = shlex.split('meningotype --mlst --porB --bast --finetype '+infile)
         proc = Popen(args, stdout=PIPE)
-        result = proc.stdout.read().decode('UTF-8')
+        result = proc.communicate()[0].decode('UTF-8')
         mng_res = pd.read_csv(StringIO(result), header=0, sep='\t')
         # Replace the path to the contigs in first col with the isolate name.
         mng_res.iloc[0, 0] = isolate
@@ -581,7 +568,7 @@ def run_sistr(infile, outfile, isolate, cpus):
         infile = infile[0]
         args = shlex.split('sistr -t '+str(cpus)+' --no-cgmlst '+infile)
         proc = Popen(args, stdout=PIPE)
-        result = proc.stdout.read().decode('UTF-8')
+        result = proc.communicate()[0].decode('UTF-8')
         sstr_res = pd.read_json(StringIO(result))
         sstr_out = {'sistr_serovar': sstr_res.loc[0,'serovar']}
         sstr_result = create_pandas_df(sstr_out, isolate)
@@ -589,7 +576,7 @@ def run_sistr(infile, outfile, isolate, cpus):
     def sistr_version():
         args = shlex.split('sistr --version')
         proc = Popen(args, stdout=PIPE)
-        version = proc.stdout.read().decode('UTF-8').rstrip().split('\n')[0]
+        version = proc.communicate()[0].decode('UTF-8').rstrip().split('\n')[0]
         return {'softwareSISTRversion': version}
 
     # Capture all dfs into a single df and then write to file.
@@ -609,7 +596,7 @@ def run_legsta(infile, outfile, isolate):
         # Run legsta and capture the output from the screen as a pandas df.
         args = shlex.split('legsta '+infile)
         proc = Popen(args, stdout=PIPE)
-        result = proc.stdout.read().decode('UTF-8')
+        result = proc.communicate()[0].decode('UTF-8')
         lgst_res = pd.read_csv(StringIO(result), header=0, sep='\t')
         # Replace the path to the contigs in first col with the isolate name.
         lgst_res.iloc[0, 0] = isolate
@@ -627,7 +614,7 @@ def run_legsta(infile, outfile, isolate):
         '''
         args = shlex.split('legsta --version')
         proc = Popen(args, stdout=PIPE)
-        version = proc.stdout.read().decode('UTF-8').rstrip().split('\n')[0]
+        version = proc.communicate()[0].decode('UTF-8').rstrip().split('\n')[0]
         return {'softwarelegstaversion': version}
 
     # Capture all dfs into a single df and then write to file.
@@ -648,7 +635,7 @@ def run_lissero(infile, outfile, isolate):
         # Run lissero and capture the output from the screen as a pandas df.
         args = shlex.split('LisSero.py '+infile)
         proc = Popen(args, stdout=PIPE)
-        result = proc.stdout.read().decode('UTF-8')
+        result = proc.communicate()[0].decode('UTF-8')
         lssr_res = pd.read_csv(StringIO(result), header=0, sep='\t')
         # Replace the path to the contigs in first col with the isolate name.
         lssr_res.iloc[0, 0] = isolate
@@ -688,7 +675,7 @@ def run_ariba(infiles, outfile, isolate, dbase, result_basedir):
         '''
         args = shlex.split('ariba version')
         proc = Popen(args, stdout=PIPE)
-        version = proc.stdout.read().decode('UTF-8').rstrip().split('\n')[0]
+        version = proc.communicate()[0].decode('UTF-8').rstrip().split('\n')[0]
         return {'softwareAribaVersion_'+dbase[0]: version,
                 'softwareAribaDB_'+dbase[0]: dbase[1]}
 
