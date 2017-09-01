@@ -181,7 +181,8 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
 #         ab_results_simplified = {}
 #         ab_results_simple_aggreg = defaultdict(list)
         for i in ab_data.index.values:
-            ab_results_simplified['Abricate_'+dbase[0]+'_all_genes'].append(pregx.sub('', ab_data.loc[i, 'GENE']))
+            ab_results_simplified['Abricate_'+dbase[0]+'_all_genes'] \
+            .append(pregx.sub('', ab_data.loc[i, 'GENE']))
             ab_results = {}
             # Generate the simplified dict
             simplifiedtable_key = 'abricate_'+dbase[0] +\
@@ -190,13 +191,22 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
             coverage and ab_data.loc[i, '%IDENTITY'] >= identity:
                 if simplifiedtable_key not in ab_results_simplified.items():
                     ab_results_simplified[simplifiedtable_key] = 'yes'
+                    ab_results_simplified['Abricate_'+dbase[0] +
+                                          '_genes_confirmed'] \
+                   .append(pregx.sub('', ab_data.loc[i, 'GENE']))
                 else:
                     ab_results_simplified[simplifiedtable_key] = 'maybe'
-                    ab_results_simplified['Abricate_'+dbase[0]+'_genes_to_be_confirmed'].append(pregx.sub('', ab_data.loc[i, 'GENE']))
+                    del ab_results_simplified['Abricate_'+dbase[0] +
+                                              '_genes_confirmed']
+                    ab_results_simplified['Abricate_'+dbase[0] +
+                                          '_genes_unconfirmed'] \
+                    .append(pregx.sub('', ab_data.loc[i, 'GENE']))
             if ab_data.loc[i, '%COVERAGE'] < coverage or \
             ab_data.loc[i, '%IDENTITY'] < identity:
                 ab_results_simplified[simplifiedtable_key] = 'maybe'
-                ab_results_simplified['Abricate_'+dbase[0]+'_genes_to_be_confirmed'].append(pregx.sub('', ab_data.loc[i, 'GENE']))
+                ab_results_simplified['Abricate_'+dbase[0] +
+                                      '_genes_unconfirmed'] \
+                .append(pregx.sub('', ab_data.loc[i, 'GENE']))
 
             # Generate the complex (close to raw data) dict
             # Bind the coverage, ID and gaps into a single cell value.
@@ -350,7 +360,7 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
         cmd_head = 'head -3'
         cmd_full = cmd_kraken+' | '+cmd_krk_r+' | ' +\
                    cmd_grep+' | '+cmd_sort+' | '+cmd_head
-        sys.stderr.write(cmd_full+'\n')
+        # sys.stderr.write(cmd_full+'\n')
         output = check_output(cmd_full, shell=True)
         output2 = output.decode('UTF-8').split('\n')
         kraken = [line.strip().split('\t') for line

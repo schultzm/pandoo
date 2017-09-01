@@ -90,6 +90,16 @@ from ruffus import (mkdir,
                     pipeline_run,
                     pipeline_printout_graph)
 
+from Pandoo.resistance_alert import (FULL_CPE_GENES,
+                                     ENTEROBACTERIACEAE,
+                                     RMTASE_GENES,
+                                     COLISTIN_GENES)
+                                     # CARALERT NOTIFICATION:
+                                     # Enterobacteriaceae with RMTASE_GENES.
+                                     # CPE alert:
+                                     # ENTEROBACTERIACEAE with full_cpe_gene.
+
+
 # Set up the arguments parser to deal with the command line input.
 PARSER = argparse.ArgumentParser(prog='pandoo',
                                  usage='pandoo <command> <options>',
@@ -107,8 +117,7 @@ PARSER = argparse.ArgumentParser(prog='pandoo',
                                  Neisseria meningitidis serotyping, \
                                  Neisseria gonorrhoeae multi-antigen sequence \
                                  typing, Listeria monocytogenes serotype \
-                                 prediction, and Salmonella serotyping \
-                                 ).')
+                                 prediction, and Salmonella serotyping).')
 PARSER.add_argument('-v', '--version', help='Print version and quit.',
                     default=False, action='store_true', required=False)
 
@@ -717,7 +726,6 @@ if ARGS.subparser_name == 'run':
                                   buildpath(OUTBASEDIR, i, 'kraken_reads.txt'),
                                   'reads', i, N_THREADS] for i in
                                  PATHS.index.values]
-    print(KRAKEN_READS_SP_ID_PARAMS)
     @follows(create_results_folders)
     @files(KRAKEN_READS_SP_ID_PARAMS)
     @jobs_limit(JOB_LIMIT)
@@ -798,8 +806,8 @@ if ARGS.subparser_name == 'run':
                     buildpath(OUTBASEDIR, i, 'species_id.txt')]
                    for i in PATHS.index.values]
     @follows(kraken_sp_id_consensus)
-    # Todo: need to nest part of the pipeline in a function so only run if certain
-    # species are detected.
+    # Todo: need to nest part of the pipeline in a function so only 
+    # run if certain species are detected.
     @files(MLST_PARAMS)
     def mlst_contigs(infile, outfile, iso, sp_id_file):
         '''
@@ -1108,11 +1116,7 @@ if ARGS.subparser_name == 'run':
             '''
             Take the infiles in infile_list and join them to a single df.
             '''
-#             dfs = 
             # Join along axis 0 (rows).
-#             df2 = 
-#             cols = [i for i in df2.columns.values]
-#             df4 = df2.sort_index(axis=1) #this needs to be output to stdout?
             write_pandas_df(outfile,
                             pd.concat([read_pandas_df(infile)
                                        for infile in infile_list],

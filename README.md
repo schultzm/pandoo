@@ -67,7 +67,9 @@ Installing Pandoo
 
 To perform any of these install steps **for all users, remove '--user'**.  The final symlink step is not required if installing for all users.  _Pandoo is written for **python3** and installation requires **pip3** and **setuptools**_.  To install the latest 'stable' version of pandoo for the current user only, do::  
 First update `python3`, `pip3`, `setuptools`.  Then try:
-    pip3 install pandoo --user
+    pip3 install pandoo --user -I #-I means ignore those already installed and reinstall the versions as stated in setup.py, especially needing ruffus version 2.6.2 instead of ruffus 2.6.3.
+
+
 
 To upgrade::  
 

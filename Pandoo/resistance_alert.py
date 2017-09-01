@@ -1,20 +1,19 @@
 #this code is development
 import pandas as pd
-# Read the ncbibetalactamase table from ncbi and store as a pandas dframe
-dframe = pd.read_table('ftp://ftp.ncbi.nlm.nih.gov/pathogen/betalactamases/Allele.tab', header=0, index_col='#allele name')
-print(dframe)
+DFRAME = pd.read_table('ftp://ftp.ncbi.nlm.nih.gov/pathogen/betalactamases/Allele.tab', header=0, index_col='#allele name')
+# print(DFRAME)
 
 def gene_list(dframe, k_word, columnname):
     '''
-    Parse dframe to retrieve gene list matching k_word and columnname criteria.
+    Parse DFRAME to retrieve gene list matching k_word and columnname criteria.
     '''
     return [dframe.loc[value, 'gene name'] for value in dframe.index.values if k_word in dframe.loc[value, columnname]]
 
-metallo_betalactamases = gene_list(dframe, 'metallo-beta-lactamase', 'curated gene product name')
-carbapenemases = gene_list(dframe, 'carbapenem-hydrolyzing', 'curated gene product name')
-full_CPE_genes = metallo_betalactamases + carbapenemases
-esbl_genes = gene_list(dframe, 'extended-spectrum beta-lactamase', 'curated gene product name')
-rmtase_genes = ['armA',
+METALLO_BETALACTAMASES = gene_list(DFRAME, 'metallo-beta-lactamase', 'curated gene product name')
+CARBAPENEMASES = gene_list(DFRAME, 'carbapenem-hydrolyzing', 'curated gene product name')
+FULL_CPE_GENES = METALLO_BETALACTAMASES + CARBAPENEMASES
+ESBL_GENES = gene_list(DFRAME, 'extended-spectrum beta-lactamase', 'curated gene product name')
+RMTASE_GENES = ['armA',
                 'rmtA',
                 'rmtB',
                 'rmtC',
@@ -25,7 +24,7 @@ rmtase_genes = ['armA',
                 'rmtH',
                 'npmA']
 
-colistin_genes = ['mcr-1.1',
+COLISTIN_GENES = ['mcr-1.1',
                   'mcr-1.2',
                   'mcr-1.3',
                   'mcr-1.4',
@@ -36,10 +35,10 @@ colistin_genes = ['mcr-1.1',
                   'mcr-2.1',
                   'mcr-3.1',
                   'mcr-4.1']
-# print(metallo_betalactamases)
-# print(carbapenemases)
-print(full_CPE_genes)
-print(esbl_genes)
+# print(METALLO_BETALACTAMASES)
+# print(CARBAPENEMASES)
+# print('carbapenemases', FULL_CPE_GENES)
+# print(ESBL_GENES)
 
 
 #CARALERT NOTIFICATION
@@ -68,3 +67,18 @@ ENTEROBACTERIACEAE = ['Cedecea',
                       'Serratia',
                       'Shigella',
                       'Yersinia']
+
+
+class Isolate:
+    def __init__(name, genus_epithet, specific_epithet, amr_profile):
+        '''
+        Isolate name, genus, species, and resistance genes.
+        '''
+        self.name = name
+        self.genus_epithet = genus_epithet
+        self.specific_epithet = specific_epithet
+        self.amr_profile = amr_profile
+    def x():
+        pass
+
+    
