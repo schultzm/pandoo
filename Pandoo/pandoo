@@ -717,6 +717,7 @@ if ARGS.subparser_name == 'run':
                                   buildpath(OUTBASEDIR, i, 'kraken_reads.txt'),
                                   'reads', i, N_THREADS] for i in
                                  PATHS.index.values]
+    print(KRAKEN_READS_SP_ID_PARAMS)
     @follows(create_results_folders)
     @files(KRAKEN_READS_SP_ID_PARAMS)
     @jobs_limit(JOB_LIMIT)
@@ -1201,7 +1202,6 @@ if ARGS.subparser_name == 'run':
                      forcedtorun_tasks=[summarise_intra_iso_results])
     else:
         pipeline_run(multiprocess=N_CPU)
-
     print('\nLength of infile list as string: ' +
           str(len(', '.join([buildpath(OUTBASEDIR, i)
                              for i in PATHS.index.values]))), file=sys.stderr)
