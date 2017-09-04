@@ -1,5 +1,8 @@
 #this code is development
 import pandas as pd
+from collections import defaultdict
+
+
 DFRAME = pd.read_table('ftp://ftp.ncbi.nlm.nih.gov/pathogen/betalactamases/Allele.tab', header=0, index_col='#allele name')
 # print(DFRAME)
 
@@ -8,6 +11,7 @@ def gene_list(dframe, k_word, columnname):
     Parse DFRAME to retrieve gene list matching k_word and columnname criteria.
     '''
     return [dframe.loc[value, 'gene name'] for value in dframe.index.values if k_word in dframe.loc[value, columnname]]
+
 
 METALLO_BETALACTAMASES = gene_list(DFRAME, 'metallo-beta-lactamase', 'curated gene product name')
 CARBAPENEMASES = gene_list(DFRAME, 'carbapenem-hydrolyzing', 'curated gene product name')
@@ -68,17 +72,23 @@ ENTEROBACTERIACEAE = ['Cedecea',
                       'Shigella',
                       'Yersinia']
 
+GENES_DICT = {'FULL_CPE_GENES': FULL_CPE_GENES,
+              'ESBL_GENES': ESBL_GENES,
+              'RMTASE_GENES': RMTASE_GENES,
+              'COLISTIN_GENES': COLISTIN_GENES,
+              'ENTEROBACTERIACEAE': ENTEROBACTERIACEAE}
 
-class Isolate:
-    def __init__(name, genus_epithet, specific_epithet, amr_profile):
-        '''
-        Isolate name, genus, species, and resistance genes.
-        '''
-        self.name = name
-        self.genus_epithet = genus_epithet
-        self.specific_epithet = specific_epithet
-        self.amr_profile = amr_profile
-    def x():
-        pass
-
+# print(genes_dict)
+# class Isolate:
+#     def __init__(name, genus_epithet, specific_epithet, amr_profile):
+#         '''
+#         Isolate name, genus, species, and resistance genes.
+#         '''
+#         self.name = name
+#         self.genus_epithet = genus_epithet
+#         self.specific_epithet = specific_epithet
+#         self.amr_profile = amr_profile
+#     def x():
+#         pass
+# 
     

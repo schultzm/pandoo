@@ -90,14 +90,11 @@ from ruffus import (mkdir,
                     pipeline_run,
                     pipeline_printout_graph)
 
-from Pandoo.resistance_alert import (FULL_CPE_GENES,
-                                     ENTEROBACTERIACEAE,
-                                     RMTASE_GENES,
-                                     COLISTIN_GENES)
-                                     # CARALERT NOTIFICATION:
-                                     # Enterobacteriaceae with RMTASE_GENES.
-                                     # CPE alert:
-                                     # ENTEROBACTERIACEAE with full_cpe_gene.
+from Pandoo.resistance_alert import GENES_DICT
+    # CARALERT NOTIFICATION:
+    # Enterobacteriaceae with RMTASE_GENES.
+    # CPE alert:
+    # ENTEROBACTERIACEAE with full_cpe_gene.
 
 
 # Set up the arguments parser to deal with the command line input.
@@ -114,7 +111,7 @@ PARSER = argparse.ArgumentParser(prog='pandoo',
                                  virulence factors, plasmid replicon types, \
                                  and species-specific in-silico predictions \
                                  such as Legionella pneumophila SBT, \
-                                 Neisseria meningitidis serotyping, \
+                                 Neisseria meningitidis sero/fine-typing, \
                                  Neisseria gonorrhoeae multi-antigen sequence \
                                  typing, Listeria monocytogenes serotype \
                                  prediction, and Salmonella serotyping).')
@@ -903,20 +900,23 @@ if ARGS.subparser_name == 'run':
                         buildpath(OUTBASEDIR, i,
                                   'abricate_'+key+'_simple.txt'),
                         i, [key, value], ARGS.abricate_cov,
-                        ARGS.abricate_id]
+                        ARGS.abricate_id, GENES_DICT,
+                        buildpath(OUTBASEDIR, i, 'species_id.txt')]
                        for i in PATHS.index.values
                        for key, value in list(ABRICATE_DBS.items())]
     @follows(kraken_contigs_sp_id)
     @files(ABRICATE_PARAMS)
     def abricate_contigs(infile, outfile, outfile_simple, iso,
-                         database, coverage, identity):
+                         database, coverage, identity, genes_dict,
+                         sp_id_file):
         '''
         Runs Abricate on the contigs.
         Creates an abricate result table, and an aggregate summary table.
         '''
         print('abricate oufile:', outfile, file=sys.stderr)
+        species = get_species(sp_id_file, iso)
         run_abricate(infile, outfile, outfile_simple, iso, database, coverage,
-                     identity)
+                     identity, genes_dict, species)
 
 
     if ARGS.ariba_on:
