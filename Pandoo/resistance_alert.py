@@ -28,17 +28,17 @@ RMTASE_GENES = ['armA',
                 'rmtH',
                 'npmA']
 
-COLISTIN_GENES = ['mcr-1.1',
-                  'mcr-1.2',
-                  'mcr-1.3',
-                  'mcr-1.4',
-                  'mcr-1.5',
-                  'mcr-1.6',
-                  'mcr-1.7',
-                  'mcr-1.8',
-                  'mcr-2.1',
-                  'mcr-3.1',
-                  'mcr-4.1']
+COLISTIN_GENES = ['mcr-1']#.1',
+#                   'mcr-1.2',
+#                   'mcr-1.3',
+#                   'mcr-1.4',
+#                   'mcr-1.5',
+#                   'mcr-1.6',
+#                   'mcr-1.7',
+#                   'mcr-1.8',
+#                   'mcr-2.1',
+#                   'mcr-3.1',
+#                   'mcr-4.1']
 # print(METALLO_BETALACTAMASES)
 # print(CARBAPENEMASES)
 # print('carbapenemases', FULL_CPE_GENES)
@@ -60,6 +60,7 @@ ENTEROBACTERIACEAE = ['Cedecea',
                       'Escherichia',
                       'Ewingella',
                       'Hafnia alvei',
+                      'Hafnia paralvei',
                       'Klebsiella',
                       'Kluyvera',
                       'Leclercia',
@@ -72,11 +73,12 @@ ENTEROBACTERIACEAE = ['Cedecea',
                       'Shigella',
                       'Yersinia']
 
-GENES_DICT = {'FULL_CPE_GENES': FULL_CPE_GENES,
-              'ESBL_GENES': ESBL_GENES,
-              'RMTASE_GENES': RMTASE_GENES,
-              'COLISTIN_GENES': COLISTIN_GENES,
-              'ENTEROBACTERIACEAE': ENTEROBACTERIACEAE}
+GENES_DICT = {'GENES': {'CPE_genes': FULL_CPE_GENES,
+              'ESBL_genes': ESBL_GENES,
+              '16S_Methyltransferase_genes': RMTASE_GENES,
+              'Colistin_genes': COLISTIN_GENES},
+              'Enterobacteriaceae': ENTEROBACTERIACEAE}
+# print(GENES_DICT)
 
 # print(genes_dict)
 # class Isolate:
