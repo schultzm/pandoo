@@ -177,30 +177,25 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
         ab_results_simplified = defaultdict(list)
         for i in ab_data.index.values:
             gene_name = pregx.sub('', ab_data.loc[i, 'GENE'])
-#             print('gene_name', gene_name)
             ab_results_simplified['Abricate_'+dbase[0]+'_all_genes'] \
             .append(gene_name)
             for key, value in genes_dict['GENES'].items():
-#                 for item in genes_dict['GENES'][key]:
-#                     print(item)
-#                 print('key', key)
-#                 sublist = [j for j in genes_dict['GENES'][key] if gene_name.lower() == j.lower()]
-#                 print(isolate, 'dbase', dbase[0], 'sublist', sublist, gene_name)
                 if gene_name in genes_dict['GENES'][key]:
                     ab_results_simplified['Abricate_'+dbase[0]+'_'+key] \
                     .append(gene_name)
-                    
+                    # RULES:
+                    # CPE_ALERT
+                    # ENTEROBACTERIACEAE with CPE_gene
                     if key == 'CPE_genes':
-                        if species.split()[0] in [genus for genus in genes_dict['Enterobacteriaceae']] or species in [genus for genus in genes_dict['Enterobacteriaceae']]:
-                            if 'CPE_ALERT_'+dbase[0] not in ab_results_simplified:
-                                ab_results_simplified['CPE_ALERT_'+dbase[0]] = 'CPE_ALERT'
+                        if species.split()[0] in [genus for genus in
+                                                  genes_dict['Enterobacteriaceae']] or species in [genus for genus in genes_dict['Enterobacteriaceae']]:
+                            ab_results_simplified['CPE_ALERT_'+dbase[0]] = 'CPE_ALERT'
+                    # RULES:
+                    # CARALERT
+                    # Enterobacteriaceae with 16S_Methyltransferase_gene.
                     if key == '16S_Methyltransferase_genes':
                         if species.split()[0] in [genus for genus in genes_dict['Enterobacteriaceae']] or species in [genus for genus in genes_dict['Enterobacteriaceae']]:
-                            if 'CARALERT_'+dbase[0] not in ab_results_simplified:
-                                ab_results_simplified['CARALERT_'+dbase[0]] = 'CARALERT'
-                    
-                        
-#             print(ab_results_simplified)
+                            ab_results_simplified['CARALERT_'+dbase[0]] = 'CARALERT'
             ab_results = {}
             # Generate the simplified dict
             simplifiedtable_key = 'abricate_'+dbase[0] +\
@@ -211,16 +206,17 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
                     ab_results_simplified[simplifiedtable_key] = 'yes'
                     ab_results_simplified['Abricate_'+dbase[0] +
                                           '_genes_confirmed'] \
-                   .append(gene_name)
+                    .append(gene_name)
                 else:
                     ab_results_simplified[simplifiedtable_key] = 'maybe'
-                    del ab_results_simplified['Abricate_'+dbase[0] +
-                                              '_genes_confirmed']
+                    if 'Abricate_'+dbase[0]+'_genes_confirmed' in ab_results_simplified:
+                        if gene_name in ab_results_simplified['Abricate_'+dbase[0] +
+                                                              '_genes_confirmed']:
+                            ab_results_simplified['Abricate_'+dbase[0] +
+                                                  '_genes_confirmed'].remove(gene_name)
                     ab_results_simplified['Abricate_'+dbase[0] +
                                           '_genes_unconfirmed'] \
                     .append(gene_name)
-#             if ab_data.loc[i, '%COVERAGE'] < coverage or \
-#             ab_data.loc[i, '%IDENTITY'] < identity:
             else:
                 ab_results_simplified[simplifiedtable_key] = 'maybe'
                 ab_results_simplified['Abricate_'+dbase[0] +
