@@ -4,7 +4,6 @@ Pandoo/__init__.py
 Pandoo/pandoo
 Pandoo/pandoo_tasks.py
 Pandoo/reformat_vfdb_header.py
-Pandoo/resistance_alert.py
 graft Pandoo/CARD
 graft Pandoo/VFDB_core
 graft Pandoo/qacGenes

@@ -90,11 +90,10 @@ from ruffus import (mkdir,
                     pipeline_run,
                     pipeline_printout_graph)
 
-from Pandoo.resistance_alert import GENES_DICT
-    # CARALERT NOTIFICATION:
-    # Enterobacteriaceae with RMTASE_GENES.
-    # CPE alert:
-    # ENTEROBACTERIACEAE with full_cpe_gene.
+# CARALERT NOTIFICATION:
+# Enterobacteriaceae with RMTASE_GENES.
+# CPE alert:
+# ENTEROBACTERIACEAE with full_cpe_gene.
 
 
 # Set up the arguments parser to deal with the command line input.
@@ -900,14 +899,14 @@ if ARGS.subparser_name == 'run':
                         buildpath(OUTBASEDIR, i,
                                   'abricate_'+key+'_simple.txt'),
                         i, [key, value], ARGS.abricate_cov,
-                        ARGS.abricate_id, GENES_DICT,
+                        ARGS.abricate_id,
                         buildpath(OUTBASEDIR, i, 'species_id.txt')]
                        for i in PATHS.index.values
                        for key, value in list(ABRICATE_DBS.items())]
     @follows(kraken_contigs_sp_id)
     @files(ABRICATE_PARAMS)
     def abricate_contigs(infile, outfile, outfile_simple, iso,
-                         database, coverage, identity, genes_dict,
+                         database, coverage, identity,
                          sp_id_file):
         '''
         Runs Abricate on the contigs.
@@ -916,7 +915,7 @@ if ARGS.subparser_name == 'run':
         print('abricate oufile:', outfile, file=sys.stderr)
         species = get_species(sp_id_file, iso)
         run_abricate(infile, outfile, outfile_simple, iso, database, coverage,
-                     identity, genes_dict, species)
+                     identity, species)
 
 
     if ARGS.ariba_on:

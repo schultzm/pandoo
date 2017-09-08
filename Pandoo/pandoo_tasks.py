@@ -94,14 +94,17 @@ def get_paths(infile):
             contents = Path(infile).read_text()
             df1 = pd.read_csv(StringIO(contents), header=None, sep='\t',
                               converters={0:str})
-            df1.columns = [PANDAS_INDEX_LABEL, 'pathContigs', 'pathReads1', 'pathReads2']
+            df1.columns = [PANDAS_INDEX_LABEL, 'pathContigs', 'pathReads1',
+                           'pathReads2']
             df2 = df1.set_index(PANDAS_INDEX_LABEL)
             return df2
         except:
             pass
         try:
-            df1 = pd.read_csv(StringIO(infile), header=None, sep='\t', converters={0: str})
-            df1.columns = [PANDAS_INDEX_LABEL, 'pathContigs', 'pathReads1', 'pathReads2']
+            df1 = pd.read_csv(StringIO(infile), header=None, sep='\t',
+                              converters={0: str})
+            df1.columns = [PANDAS_INDEX_LABEL, 'pathContigs', 'pathReads1',
+                           'pathReads2']
             df2 = df1.set_index(PANDAS_INDEX_LABEL)
             return df2
         except ValueError:
@@ -135,7 +138,7 @@ def create_pandas_df(dictionary, isolate):
 
 
 def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
-                 identity, genes_dict, species):
+                 identity, species):
     '''
     Runs abricate on the infile.
     '''
@@ -173,34 +176,45 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
         os.system(cmd)
         # Here we open the abricate results
         ab_data = pd.read_table(outfile, sep='\t', header=0)
+        print(ab_data)
         ab_results_df_list = []
         ab_results_simplified = defaultdict(list)
+        genes_dict = {'GENES':defaultdict(list)}
         for i in ab_data.index.values:
             gene_name = pregx.sub('', ab_data.loc[i, 'GENE'])
-            ab_results_simplified['Abricate_'+dbase[0]+'_all_genes'] \
+            print(gene_name)
+            ab_results_simplified['0_Abricate_'+dbase[0]+'_all_genes'] \
             .append(gene_name)
-            for key, value in genes_dict['GENES'].items():
-                if gene_name in genes_dict['GENES'][key]:
-                    ab_results_simplified['Abricate_'+dbase[0]+'_'+key] \
+            if dbase[0] == 'ncbi' or dbase[0] == 'ncbibetalactamase':
+                if 'PRODUCT' in ab_data:
+                    product = ab_data.loc[i, 'PRODUCT']
+                    if ' ' in product:
+                        if product.rsplit(' ', 1)[-1][0].isupper():
+                            product = product.rsplit(' ', 1)[0]
+                    ab_results_simplified['Abricate_'+dbase[0]+'_'+product] \
                     .append(gene_name)
+#             for key, value in genes_dict['GENES'].items():
+#                 if gene_name in genes_dict['GENES'][key]:
+#                     ab_results_simplified['Abricate_'+dbase[0]+'_'+key] \
+#                     .append(gene_name)
                     # RULES:
                     # CPE_ALERT
                     # ENTEROBACTERIACEAE with CPE_gene
-                    if key == 'CPE_genes':
-                        if species.split()[0] in \
-                        genes_dict['Enterobacteriaceae'] or species in \
-                        genes_dict['Enterobacteriaceae']:
-                            ab_results_simplified['ALERT_CPE_' +
-                                                  dbase[0]] = 'CPE_ALERT'
-                    # RULES:
-                    # CARALERT
-                    # Enterobacteriaceae with 16S_Methyltransferase_gene.
-                    if key == '16S_Methyltransferase_genes':
-                        if species.split()[0] in \
-                        genes_dict['Enterobacteriaceae'] or species in \
-                        genes_dict['Enterobacteriaceae']:
-                            ab_results_simplified['ALERT_CARALERT_' +
-                                                  dbase[0]] = 'CARALERT'
+#                     if key == 'CPE_genes':
+#                         if species.split()[0] in \
+#                         genes_dict['Enterobacteriaceae'] or species in \
+#                         genes_dict['Enterobacteriaceae']:
+#                             ab_results_simplified['ALERT_CPE_' +
+#                                                   dbase[0]] = 'CPE_ALERT'
+#                     # RULES:
+#                     # CARALERT
+#                     # Enterobacteriaceae with 16S_Methyltransferase_gene.
+#                     if key == '16S_Methyltransferase_genes':
+#                         if species.split()[0] in \
+#                         genes_dict['Enterobacteriaceae'] or species in \
+#                         genes_dict['Enterobacteriaceae']:
+#                             ab_results_simplified['ALERT_CARALERT_' +
+#                                                   dbase[0]] = 'CARALERT'
             ab_results = {}
             # Generate the simplified dict
             simplifiedtable_key = 'abricate_'+dbase[0] +\
@@ -209,25 +223,25 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
             coverage and ab_data.loc[i, '%IDENTITY'] >= identity:
                 if simplifiedtable_key not in ab_results_simplified:
                     ab_results_simplified[simplifiedtable_key] = 'yes'
-                    ab_results_simplified['Abricate_'+dbase[0] +
+                    ab_results_simplified['0_Abricate_'+dbase[0] +
                                           '_genes_confirmed'] \
                     .append(gene_name)
                 else:
                     ab_results_simplified[simplifiedtable_key] = 'maybe'
-                    if 'Abricate_'+dbase[0]+'_genes_confirmed' in \
+                    if '0_Abricate_'+dbase[0]+'_genes_confirmed' in \
                     ab_results_simplified:
                         if gene_name in \
-                        ab_results_simplified['Abricate_' +dbase[0] +
+                        ab_results_simplified['0_Abricate_' +dbase[0] +
                                               '_genes_confirmed']:
                             ab_results_simplified['Abricate_'+dbase[0] +
                                                   '_genes_confirmed'] \
                                                  .remove(gene_name)
-                    ab_results_simplified['Abricate_'+dbase[0] +
+                    ab_results_simplified['0_Abricate_'+dbase[0] +
                                           '_genes_unconfirmed'] \
                     .append(gene_name)
             else:
                 ab_results_simplified[simplifiedtable_key] = 'maybe'
-                ab_results_simplified['Abricate_'+dbase[0] +
+                ab_results_simplified['0_Abricate_'+dbase[0] +
                                       '_genes_unconfirmed'] \
                 .append(gene_name)
 
@@ -274,6 +288,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
                                                      isolate), version_df],
                                    axis=1)
     write_pandas_df(outfile_simple, abricate_df_simple)
+    print(outfile_simple)
 
 
 
