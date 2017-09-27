@@ -318,7 +318,7 @@ ARGS = PARSER.parse_args()
 
 STARTTIME = datetime.now()
 
-VERSION = '\nPando version: ' + __version__ +\
+VERSION = '\nPandoo version: ' + __version__ +\
           '\nVersion date: ' + __version_date__ +\
           '\nauthors: '+ __author__ +\
           '\nCorresponding author email: '+ __author_email__ +\

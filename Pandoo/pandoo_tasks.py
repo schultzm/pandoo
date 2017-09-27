@@ -176,13 +176,11 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
         os.system(cmd)
         # Here we open the abricate results
         ab_data = pd.read_table(outfile, sep='\t', header=0)
-        print(ab_data)
         ab_results_df_list = []
         ab_results_simplified = defaultdict(list)
         genes_dict = {'GENES':defaultdict(list)}
         for i in ab_data.index.values:
             gene_name = pregx.sub('', ab_data.loc[i, 'GENE'])
-            print(gene_name)
             ab_results_simplified['0_Abricate_'+dbase[0]+'_all_genes'] \
             .append(gene_name)
             if dbase[0] == 'ncbi' or dbase[0] == 'ncbibetalactamase':
@@ -233,7 +231,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
                         if gene_name in \
                         ab_results_simplified['0_Abricate_' +dbase[0] +
                                               '_genes_confirmed']:
-                            ab_results_simplified['Abricate_'+dbase[0] +
+                            ab_results_simplified['0_Abricate_'+dbase[0] +
                                                   '_genes_confirmed'] \
                                                  .remove(gene_name)
                     ab_results_simplified['0_Abricate_'+dbase[0] +
@@ -288,8 +286,6 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
                                                      isolate), version_df],
                                    axis=1)
     write_pandas_df(outfile_simple, abricate_df_simple)
-    print(outfile_simple)
-
 
 
 def seqtk_version():
