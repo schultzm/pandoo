@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 cp README.md README
-git tag 0.2.11
+git tag 0.2.12
 git push --tags
 git add .
 git commit -m 'Gene classification in place'

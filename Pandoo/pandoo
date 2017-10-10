@@ -90,12 +90,17 @@ from ruffus import (mkdir,
                     pipeline_run,
                     pipeline_printout_graph)
 
+# Start shared drmaa session for all jobs / tasks in pipeline
+# import drmaa
+# drmaa_session = drmaa.Session()
+# drmaa_session.initialize()
+
 # CARALERT NOTIFICATION:
 # Enterobacteriaceae with RMTASE_GENES.
 # CPE alert:
 # ENTEROBACTERIACEAE with full_cpe_gene.
 
-
+####INCORRECT SUBPARSER CODE e.g. subparser_input for check...
 # Set up the arguments parser to deal with the command line input.
 PARSER = argparse.ArgumentParser(prog='pandoo',
                                  usage='pandoo <command> <options>',
@@ -1201,7 +1206,7 @@ if ARGS.subparser_name == 'run':
                               '_metadataAll.csv'))
         remove_file(buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
                               '_metadataAll_simplified.csv'))
-        pipeline_run(multiprocess=N_CPU,
+        pipeline_run(multithread=N_CPU,
                      forcedtorun_tasks=[summarise_intra_iso_results])
     else:
         pipeline_run(multiprocess=N_CPU)
@@ -1277,4 +1282,7 @@ if ARGS.subparser_name == 'merge':
 
 sys.stderr.write('\nDone. Thankyou for you using ' + VERSION +
            '\nTotal runtime (HRS:MIN:SECS):' +
-           str(datetime.now() - STARTTIME) + '\n🍺\n')
+           str(datetime.now() - STARTTIME) + '\n💊\n')
+# 
+# if __name__ == '__main__':
+#     drmaa_session.exit()
