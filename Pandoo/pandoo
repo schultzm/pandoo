@@ -6,7 +6,7 @@
     This script:
         1. is the entry point for pandoo
         2. contains the pipeline functions for pandoo.
-    The pipeline purposely does not sit inside a main() function.
+    The pipeline purposefully does not sit inside a main() function.
 
     To run it minimally, on the command line do:
         'pandoo -h'
