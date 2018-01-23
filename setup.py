@@ -12,7 +12,7 @@ setup(
     name = 'pandoo',
     version = Pandoo.__version__,
     description = Pandoo.__description__,
-    long_description=read('README'),
+    long_description=read('README.md'),
     classifiers = ['Development Status :: 3 - Alpha',
                    'License :: OSI Approved :: GNU Affero General ' +
                    'Public License v3 or later (AGPLv3+)',
