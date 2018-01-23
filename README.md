@@ -49,8 +49,8 @@ The following packages need to be installed before running pandoo.  To install d
     brew install cd-hit
     brew install kraken
     brew install graphviz
-    pip install git+https://github.com/MDU-PHL/ngmaster.git #(see install instructions at https://github.com/MDU-PHL/ngmaster)
-    pip install git+https://github.com/MDU-PHL/meningotype.git #(see install instructions at https://github.com/MDU-PHL/meningotype)
+    pip3 install git+https://github.com/MDU-PHL/ngmaster.git #(see install instructions at https://github.com/MDU-PHL/ngmaster)
+    pip3 install git+https://github.com/MDU-PHL/meningotype.git #(see install instructions at https://github.com/MDU-PHL/meningotype)
     pip3 install biopython
     pip3 install ariba
     #install sistr from http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0147101 (location?)
