@@ -556,7 +556,7 @@ def run_ngmaster(infile, outfile, isolate):
         '''
         args = shlex.split('ngmaster --version')
         proc = Popen(args, stderr=PIPE)
-        version = proc.stderr.read().decode('UTF-8').rstrip().split('\n')[1]
+        version = proc.stderr.read().decode('UTF-8').rstrip()
         return {'softwareNGMASTERversion': version}
 
     # Capture all dfs into a single df and then write to file.
