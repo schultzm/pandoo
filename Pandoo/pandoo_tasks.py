@@ -182,10 +182,10 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
         genes_dict = {'GENES':defaultdict(list)}
         for i in ab_data.index.values:
             gene_name = pregx.sub('', ab_data.loc[i, 'GENE'])
-            print(gene_name)
             ab_results_simplified['0_Abricate_'+dbase[0]+'_all_genes'] \
             .append(gene_name)
             if dbase[0] == 'ncbi' or dbase[0] == 'ncbibetalactamase':
+            
                 if 'PRODUCT' in ab_data:
                     product = ab_data.loc[i, 'PRODUCT']
                     if ' ' in product:
@@ -230,15 +230,12 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
                     ab_results_simplified[simplifiedtable_key] = 'maybe'
                     if '0_Abricate_'+dbase[0]+'_genes_confirmed' in \
                     ab_results_simplified:
-                        if gene_name in \
-                        ab_results_simplified['0_Abricate_' +dbase[0] +
-                                              '_genes_confirmed']:
-                            ab_results_simplified['Abricate_'+dbase[0] +
-                                                  '_genes_confirmed'] \
-                                                 .remove(gene_name)
-                    ab_results_simplified['0_Abricate_'+dbase[0] +
-                                          '_genes_unconfirmed'] \
-                    .append(gene_name)
+                        if gene_name in ab_results_simplified['0_Abricate_' +dbase[0] + '_genes_confirmed']:
+                            #using pop instead of remove as primes in values throw out function (e.g., "aph(3')-Ia")
+                            for pos, val in enumerate(ab_results_simplified['0_Abricate_' +dbase[0] + '_genes_confirmed']):
+                                if gene_name == val:
+                                    ab_results_simplified['0_Abricate_' +dbase[0] + '_genes_confirmed'].pop(pos)
+                    ab_results_simplified['0_Abricate_'+dbase[0] + '_genes_unconfirmed'].append(gene_name)
             else:
                 ab_results_simplified[simplifiedtable_key] = 'maybe'
                 ab_results_simplified['0_Abricate_'+dbase[0] +
