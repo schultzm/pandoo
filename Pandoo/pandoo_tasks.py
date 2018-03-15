@@ -87,6 +87,7 @@ def get_paths(infile):
     Column 3 - paths to read1.fq.gz
     Column 4 - paths to read2.fq.gz
     '''
+    n_columns = None
     while True:
         try:
             # Read in the infile as text as some isolate names are numeric, 
@@ -103,12 +104,16 @@ def get_paths(infile):
         try:
             df1 = pd.read_csv(StringIO(infile), header=None, sep='\t',
                               converters={0: str})
+            n_columns = len(df1.columns)
             df1.columns = [PANDAS_INDEX_LABEL, 'pathContigs', 'pathReads1',
                            'pathReads2']
             df2 = df1.set_index(PANDAS_INDEX_LABEL)
             return df2
         except ValueError:
-            sys.exit('Infile contains no data')
+            sys.exit(f'Error reading \'{infile.rstrip()}\'. Check format (line breaks '
+                     f'should be unix LF, number of columns should be 4, no '
+                     f'header, etc.,) and re-run.  Your infile has '
+                     f'{n_columns} columns.')
 
 
 def write_pandas_df(outfile, dframe):
