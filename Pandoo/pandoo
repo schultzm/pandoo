@@ -453,7 +453,7 @@ if ARGS.subparser_name == 'input':
                         reads_paths = reads_available(assembly[1],
                                                       os.path \
                                                       .abspath(ARGS.readsdir))
-                        output = [assembly[1], reads_paths]
+                        output = [assembly[1], '', reads_paths]
                     else:
                         reads_paths = reads_available(assembly[0],
                                                       os.path \
