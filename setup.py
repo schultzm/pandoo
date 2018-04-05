@@ -41,5 +41,5 @@ setup(
                         'numpy>=1.13.1',
                         'pandas>=0.20.3',
                         'ete3>=3.0.0b35',
-                        'ruffus==2.6.2']
+                        'ruffus>=2.6.3']
     )
