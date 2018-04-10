@@ -487,8 +487,12 @@ if ARGS.subparser_name == 'run':
         '''
         Read a mini-pandas table containing the species id final call.
         '''
-        species_df = read_pandas_df(sp_id_file)
-        # Return the str(cellvalue) to get past error if NaN (i.e., empty cell)
+        if os.path.exists(sp_id_file):
+            species_df = read_pandas_df(sp_id_file)
+            # Return the str(cellvalue) to get past error if NaN (i.e., empty cell)
+        else:
+            species_df = pd.DataFrame({iso: ['No_hits']})
+        print(f'Species: {str(species_df.loc[iso].iloc[0])}')
         return str(species_df.loc[iso].iloc[0])
 
     def remove_file(filename):
@@ -566,15 +570,20 @@ if ARGS.subparser_name == 'run':
         else:
             try:
                 db_dict = ast.literal_eval(ARGS.abricate_dbs)
-                print('\nAbricate analyses to be run using the following ' +
-                      'databases:', file=sys.stderr)
                 for key, value in db_dict.items():
-                    print(key, value, file=sys.stderr)
-                    db_dict[key] = [os.path.abspath(value),'','']
+                    proc = Popen(shlex.split(f'abricate --db {key} --datadir {os.path.abspath(value)}'), stdout=PIPE, stderr=PIPE)
+                    stdout, stderr = (i.decode('UTF-8') for i in proc.communicate())
+                    if 'ERROR' in stderr:
+                        print(f'Abricate {stderr}')
+                        sys.exit()
+                    else:
+                        db_dict[key] = [os.path.abspath(value),'','']
                 return db_dict
             except:
-                sys.exit('Malformed python dictionary input to ' +
-                         'abricate_dbs. Exiting now.')
+                sys.exit(f'Argument passed to \'-a\': {ARGS.abricate_dbs}\n' \
+                         f'Malformed python dictionary or abricate database ' \
+                         f'not found. Exiting now.')
+    
 
     ABRICATE_DBS = inject_abricate_dbs()
 

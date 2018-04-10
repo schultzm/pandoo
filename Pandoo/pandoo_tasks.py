@@ -678,24 +678,28 @@ def run_lissero(infile, outfile, isolate):
     '''
     Run lissero on the isolate contigs file.
     '''
+    lisres = create_pandas_df({}, isolate)
     if len(infile) == 0:
-        lissr_result = create_pandas_df({}, isolate)
+        lissr_result = lisres
     if len(infile) == 1:
         infile = infile[0]
         # Run lissero and capture the output from the screen as a pandas df.
         args = shlex.split('LisSero.py '+infile)
-        proc = Popen(args, stdout=PIPE)
-        result = proc.communicate()[0].decode('UTF-8')
-        lssr_res = pd.read_csv(StringIO(result), header=0, sep='\t')
-        # Replace the path to the contigs in first col with the isolate name.
-        lssr_res.iloc[0, 0] = isolate
-        # Set the df index to the first column.
-        lissr_result = lssr_res.set_index(lssr_res.columns.values[0])
-        # Delete the index header.
-        lissr_result.index.name = None
-        # Add the text 'lissero_' to all column names.
-        lissr_result.columns = ['lissero_'+i for i in
-                                 lissr_result.columns.values]
+        proc = Popen(args, stdout=PIPE, stderr=PIPE)
+        result, stderr = (i.decode('UTF-8') for i in proc.communicate())
+        if 'ERROR' in stderr:
+            lissr_result = lisres
+        else:
+            lssr_res = pd.read_csv(StringIO(result), header=0, sep='\t')
+            # Replace the path to the contigs in first col with the isolate name.
+            lssr_res.iloc[0, 0] = isolate
+            # Set the df index to the first column.
+            lissr_result = lssr_res.set_index(lssr_res.columns.values[0])
+            # Delete the index header.
+            lissr_result.index.name = None
+            # Add the text 'lissero_' to all column names.
+            lissr_result.columns = ['lissero_'+i for i in
+                                     lissr_result.columns.values]
 
     def get_lissero_version():
         '''
