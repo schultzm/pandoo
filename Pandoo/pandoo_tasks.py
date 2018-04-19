@@ -393,7 +393,7 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
         This function exists so do_kraken() can be bypassed if there are no
         infiles.
         '''
-        cmd_krk_r = 'kraken-report --db '+dbase +\
+        cmd_krk_r = 'kraken-report --db '+dbase
         cmd_grep = "grep -P '\\tS\\t'"
         cmd_sort = 'sort -k 1 -r'
         cmd_head = 'head -3'
