@@ -47,7 +47,7 @@ from multiprocessing import Pool, cpu_count
 from time import time
 import cProfile
 import os
-import random
+import uuid
 import shlex
 import shutil
 import string
@@ -173,11 +173,8 @@ SUBPARSER_RUN.add_argument('-i', '--isolate_paths', help='Tab-delimited.  \
                            If no input file, reads from stdin (e.g., use \
                            pandoo run -i test.txt | pandoo run -o test_res)',
                            required=False, dest='isolate_paths')
-import tempfile
-# print(tempfile.TemporaryDirectory().name)
-# sys.exit()
 SUBPARSER_RUN.add_argument('-o', '--outdir', help='Output directory.',
-                           dest='outdir', default=tempfile.TemporaryDirectory().name)
+                           dest='outdir', default=str(f"tmp{uuid.uuid4().hex}"))
 SUBPARSER_RUN.add_argument('-k', '--kraken_db', help='Path to Kraken db.  \
                            Default=\'/home/linuxbrew/db/kraken//microbekraken\'',
                            default='/home/linuxbrew/db/kraken//microbekraken',
@@ -1244,6 +1241,7 @@ if ARGS.subparser_name == 'run':
             else:
                 pipeline_run(multiprocess=N_CPU,
                              history_file=temp_sqlite_db)
+            mv_tmp_sqlite(temp_sqlite_db, perm_sqlite_db)
             print('\nLength of infile list as string: ' +
                   str(len(', '.join([buildpath(OUTBASEDIR, i)
                                      for i in PATHS.index.values]))), file=sys.stderr)
@@ -1254,7 +1252,6 @@ if ARGS.subparser_name == 'run':
                 pipeline_printout_graph(buildpath(OUTBASEDIR,
                                                   ISOLATE_PATHS_BASENAME +\
                                                   '_flowchart.svg'))
-
 
             if len(', '.join([buildpath(OUTBASEDIR, i)
                               for i in PATHS.index.values])) >= 16000:
