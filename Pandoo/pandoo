@@ -715,501 +715,501 @@ if ARGS.subparser_name == 'run':
 
 
     # Pipeline starts here:
-    import tempfile
-    with tempfile.TemporaryDirectory() as tmpfile:
-        print(f'Temp results going to {tmpfile}')
-#         OUTBASEDIR = tmpfile
-        @mkdir([buildpath(OUTBASEDIR, i) for i in PATHS.index.values])
-        def create_results_folders():
-            '''
-            Creates the result directories.
-            '''
-            print('Creating output results directory structure.',
-                  file=sys.stderr)
+#     import tempfile
+#     with tempfile.TemporaryDirectory() as tmpfile:
+#         print(f'Temp results going to {tmpfile}')
+# #         OUTBASEDIR = tmpfile
+    @mkdir([buildpath(OUTBASEDIR, i) for i in PATHS.index.values])
+    def create_results_folders():
+        '''
+        Creates the result directories.
+        '''
+        print('Creating output results directory structure.',
+              file=sys.stderr)
 
 
-        # Create an empty list for reads if there are none or only one.
-        # Combine list into list containing outfile, infile type, and isolate ID.
-        KRAKEN_READS_SP_ID_PARAMS = [[[PATHS.loc[i, 'pathReads1'],
-                                       PATHS.loc[i, 'pathReads2']] if
-                                      pd.notnull(PATHS.loc[i, 'pathReads1']) and
-                                      pd.notnull(PATHS.loc[i, 'pathReads2'])
-                                      else [],
-                                      buildpath(OUTBASEDIR, i, 'kraken_reads.txt'),
-                                      'reads', i, N_THREADS] for i in
-                                     PATHS.index.values]
-        @follows(create_results_folders)
-        @files(KRAKEN_READS_SP_ID_PARAMS)
-        @jobs_limit(JOB_LIMIT)
-        def kraken_reads_sp_id(infiles, outfile, fmt, iso, threads):
-            '''
-            Run kraken on the readsets.
-            '''
-            run_kraken(infiles, outfile, fmt, iso, ARGS.kraken_db, threads)
+    # Create an empty list for reads if there are none or only one.
+    # Combine list into list containing outfile, infile type, and isolate ID.
+    KRAKEN_READS_SP_ID_PARAMS = [[[PATHS.loc[i, 'pathReads1'],
+                                   PATHS.loc[i, 'pathReads2']] if
+                                  pd.notnull(PATHS.loc[i, 'pathReads1']) and
+                                  pd.notnull(PATHS.loc[i, 'pathReads2'])
+                                  else [],
+                                  buildpath(OUTBASEDIR, i, 'kraken_reads.txt'),
+                                  'reads', i, N_THREADS] for i in
+                                 PATHS.index.values]
+    @follows(create_results_folders)
+    @files(KRAKEN_READS_SP_ID_PARAMS)
+    @jobs_limit(JOB_LIMIT)
+    def kraken_reads_sp_id(infiles, outfile, fmt, iso, threads):
+        '''
+        Run kraken on the readsets.
+        '''
+        run_kraken(infiles, outfile, fmt, iso, ARGS.kraken_db, threads)
 
 
-        # Run Kraken on the contigs, use run_kraken from pandoo_tasks.
-        # Create an empty list if there are no contigs.
-        KRAKEN_CONTIGS_SP_ID_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
-                                        pd.notnull(PATHS.loc[i, 'pathContigs'])
-                                        else [],
-                                        buildpath(OUTBASEDIR, i,
-                                                 'kraken_contigs.txt'),
-                                        'contigs', i, N_THREADS] for i in
-                                       PATHS.index.values]
-        @follows(kraken_reads_sp_id)
-        @files(KRAKEN_CONTIGS_SP_ID_PARAMS)
-        @jobs_limit(JOB_LIMIT)
-        def kraken_contigs_sp_id(infile, outfile, fmt, iso, threads):
-            '''
-            Will run Kraken on the infile (contigs).
-            '''
-            run_kraken(infile, outfile, fmt, iso, ARGS.kraken_db, threads)
+    # Run Kraken on the contigs, use run_kraken from pandoo_tasks.
+    # Create an empty list if there are no contigs.
+    KRAKEN_CONTIGS_SP_ID_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                                    pd.notnull(PATHS.loc[i, 'pathContigs'])
+                                    else [],
+                                    buildpath(OUTBASEDIR, i,
+                                             'kraken_contigs.txt'),
+                                    'contigs', i, N_THREADS] for i in
+                                   PATHS.index.values]
+    @follows(kraken_reads_sp_id)
+    @files(KRAKEN_CONTIGS_SP_ID_PARAMS)
+    @jobs_limit(JOB_LIMIT)
+    def kraken_contigs_sp_id(infile, outfile, fmt, iso, threads):
+        '''
+        Will run Kraken on the infile (contigs).
+        '''
+        run_kraken(infile, outfile, fmt, iso, ARGS.kraken_db, threads)
 
 
-        KRAKEN_RESULTS_PARAMS = [[buildpath(OUTBASEDIR, i, 'kraken_reads.txt'),
-                                  buildpath(OUTBASEDIR, i, 'species_id.txt'),
-                                  buildpath(OUTBASEDIR, i, 'kraken_contigs.txt'),
-                                  str(i)] for i in PATHS.index.values]
-        @follows(kraken_contigs_sp_id)
-        @files(KRAKEN_RESULTS_PARAMS)
-        def kraken_sp_id_consensus(infile_reads, outfile, infile_contigs, iso):
-            '''
-            Compare the results of Kraken on the reads and contigs.
-            Make a final nomination of the species for downstream analysis.
-            '''
-            kraken_reads_sp_id_df = read_pandas_df(infile_reads)
-            kraken_contigs_sp_id_df = read_pandas_df(infile_contigs)
-            target_col_reads = 'Sp_krkn_reads_1'
-            target_col_contigs = 'Sp_krkn_contigs_1'
-            # Sometimes there isn't one of the above two columns, so first test
-            # if it's there, and then read from the col if if exists.  
-            if target_col_reads in kraken_reads_sp_id_df.columns:# and \
-                species_reads = kraken_reads_sp_id_df.loc[str(iso),
-                                                          target_col_reads]
-            else:
-                species_reads = None
-            if target_col_contigs in kraken_contigs_sp_id_df.columns:
-                species_cntgs = kraken_contigs_sp_id_df.loc[str(iso),
-                                                            target_col_contigs]
-            else:
-                species_cntgs = None
-            # Now that we have the column or None if no column,
-            # go through some logic to determine the species final call.
-            if species_reads == None and species_cntgs == None:
-                species = ''
-            if species_reads is not None and species_cntgs is None:
-                species = species_reads
-            if species_reads is None and species_cntgs is not None:
+    KRAKEN_RESULTS_PARAMS = [[buildpath(OUTBASEDIR, i, 'kraken_reads.txt'),
+                              buildpath(OUTBASEDIR, i, 'species_id.txt'),
+                              buildpath(OUTBASEDIR, i, 'kraken_contigs.txt'),
+                              str(i)] for i in PATHS.index.values]
+    @follows(kraken_contigs_sp_id)
+    @files(KRAKEN_RESULTS_PARAMS)
+    def kraken_sp_id_consensus(infile_reads, outfile, infile_contigs, iso):
+        '''
+        Compare the results of Kraken on the reads and contigs.
+        Make a final nomination of the species for downstream analysis.
+        '''
+        kraken_reads_sp_id_df = read_pandas_df(infile_reads)
+        kraken_contigs_sp_id_df = read_pandas_df(infile_contigs)
+        target_col_reads = 'Sp_krkn_reads_1'
+        target_col_contigs = 'Sp_krkn_contigs_1'
+        # Sometimes there isn't one of the above two columns, so first test
+        # if it's there, and then read from the col if if exists.
+        if target_col_reads in kraken_reads_sp_id_df.columns:# and \
+            species_reads = kraken_reads_sp_id_df.loc[str(iso),
+                                                      target_col_reads]
+        else:
+            species_reads = None
+        if target_col_contigs in kraken_contigs_sp_id_df.columns:
+            species_cntgs = kraken_contigs_sp_id_df.loc[str(iso),
+                                                        target_col_contigs]
+        else:
+            species_cntgs = None
+        # Now that we have the column or None if no column,
+        # go through some logic to determine the species final call.
+        if species_reads == None and species_cntgs == None:
+            species = ''
+        if species_reads is not None and species_cntgs is None:
+            species = species_reads
+        if species_reads is None and species_cntgs is not None:
+            species = species_cntgs
+        if species_reads is not None and species_cntgs is not None:
+            if species_cntgs == species_reads:
                 species = species_cntgs
-            if species_reads is not None and species_cntgs is not None:
-                if species_cntgs == species_reads:
-                    species = species_cntgs
-                else:
-                    species = 'indet'
+            else:
+                species = 'indet'
 
-            sp_df = create_pandas_df({'Sp_krkn_FinalCall': species},
-                                     iso)
-            write_pandas_df(outfile, sp_df)
+        sp_df = create_pandas_df({'Sp_krkn_FinalCall': species},
+                                 iso)
+        write_pandas_df(outfile, sp_df)
 
-        MLST_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+    MLST_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                    pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                    buildpath(OUTBASEDIR, i, 'mlst.txt'), i,
+                    buildpath(OUTBASEDIR, i, 'species_id.txt')]
+                   for i in PATHS.index.values]
+    @follows(kraken_sp_id_consensus)
+    # Todo: need to nest part of the pipeline in a function so only
+    # run if certain species are detected.
+    @files(MLST_PARAMS)
+    def mlst_contigs(infile, outfile, iso, sp_id_file):
+        '''
+        Runs MLST on the contigs, using the species consensus after Kraken.
+        '''
+        species_df = read_pandas_df(sp_id_file)
+        species = species_df.loc[iso].iloc[0]
+        run_mlst(infile, outfile, iso, species)
+
+
+    NGMASTER_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
                         pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                        buildpath(OUTBASEDIR, i, 'mlst.txt'), i,
+                        buildpath(OUTBASEDIR, i, 'ngmaster.txt'), i,
                         buildpath(OUTBASEDIR, i, 'species_id.txt')]
                        for i in PATHS.index.values]
-        @follows(kraken_sp_id_consensus)
-        # Todo: need to nest part of the pipeline in a function so only 
-        # run if certain species are detected.
-        @files(MLST_PARAMS)
-        def mlst_contigs(infile, outfile, iso, sp_id_file):
-            '''
-            Runs MLST on the contigs, using the species consensus after Kraken.
-            '''
-            species_df = read_pandas_df(sp_id_file)
-            species = species_df.loc[iso].iloc[0]
-            run_mlst(infile, outfile, iso, species)
+    @follows(kraken_sp_id_consensus)
+    @files(NGMASTER_PARAMS)
+    def ngmaster_contigs(infile, outfile, iso, sp_id_file):
+        '''
+        Runs NGMASTer on the contigs if the species is Neisseria gonorrhoeae.
+        '''
+        species = get_species(sp_id_file, iso)
+        if species == 'Neisseria gonorrhoeae':
+            run_ngmaster(infile, outfile, iso)
 
 
-        NGMASTER_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
-                            pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                            buildpath(OUTBASEDIR, i, 'ngmaster.txt'), i,
-                            buildpath(OUTBASEDIR, i, 'species_id.txt')]
-                           for i in PATHS.index.values]
-        @follows(kraken_sp_id_consensus)
-        @files(NGMASTER_PARAMS)
-        def ngmaster_contigs(infile, outfile, iso, sp_id_file):
-            '''
-            Runs NGMASTer on the contigs if the species is Neisseria gonorrhoeae.
-            '''
-            species = get_species(sp_id_file, iso)
-            if species == 'Neisseria gonorrhoeae':
-                run_ngmaster(infile, outfile, iso)
-
-
-        MENINGOTYPE_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
-                               pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                               buildpath(OUTBASEDIR, i, 'meningotype.txt'), i,
-                               buildpath(OUTBASEDIR, i, 'species_id.txt')]
-                              for i in PATHS.index.values]
-        @follows(kraken_sp_id_consensus)
-        @files(MENINGOTYPE_PARAMS)
-        def meningotype_contigs(infile, outfile, iso, sp_id_file):
-            '''
-            Runs meningotype on the contigs if species is Neisseria meningitidis.
-            '''
-            species = get_species(sp_id_file, iso)
-            if species == 'Neisseria meningitidis':
-                run_meningotype(infile, outfile, iso)
-
-
-        LEGSTA_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
-                          pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                          buildpath(OUTBASEDIR, i, 'legsta.txt'), i,
-                          buildpath(OUTBASEDIR, i, 'species_id.txt')]
-                         for i in PATHS.index.values]
-        @follows(kraken_sp_id_consensus)
-        @files(LEGSTA_PARAMS)
-        def legsta_contigs(infile, outfile, iso, sp_id_file):
-            '''
-            Runs legsta on the contigs if the species is Legionella pneumophila.
-            '''
-            species = get_species(sp_id_file, iso)
-            if species == 'Legionella pneumophila':
-                run_legsta(infile, outfile, iso)
-
-
-        LISSERO_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+    MENINGOTYPE_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
                            pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                           buildpath(OUTBASEDIR, i, 'lissero.txt'), i,
+                           buildpath(OUTBASEDIR, i, 'meningotype.txt'), i,
                            buildpath(OUTBASEDIR, i, 'species_id.txt')]
-                           for i in PATHS.index.values]
-        @follows(kraken_sp_id_consensus)
-        @files(LISSERO_PARAMS)
-        def lissero_contigs(infile, outfile, iso, sp_id_file):
-            '''
-            Runs lissero on the contigs if the species is Listeria monocytogenes.
-            '''
-            species = get_species(sp_id_file, iso)
-            if species == 'Listeria monocytogenes':
-                run_lissero(infile, outfile, iso)
+                          for i in PATHS.index.values]
+    @follows(kraken_sp_id_consensus)
+    @files(MENINGOTYPE_PARAMS)
+    def meningotype_contigs(infile, outfile, iso, sp_id_file):
+        '''
+        Runs meningotype on the contigs if species is Neisseria meningitidis.
+        '''
+        species = get_species(sp_id_file, iso)
+        if species == 'Neisseria meningitidis':
+            run_meningotype(infile, outfile, iso)
 
 
-        SISTR_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
-                         pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                         buildpath(OUTBASEDIR, i, 'sistr.txt'), i,
-                         buildpath(OUTBASEDIR, i, 'species_id.txt'),
-                         N_THREADS] for i in PATHS.index.values]
-        @follows(kraken_sp_id_consensus)
-        @files(SISTR_PARAMS)
-        def sistr_contigs(infile, outfile, iso, sp_id_file, cpus):
-            '''
-            Runs sistr on the contigs if the genus is Salmonella.
-            '''
-            species = get_species(sp_id_file, iso)
-            if species.split()[0] == 'Salmonella':
-                run_sistr(infile, outfile, iso, cpus)
+    LEGSTA_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                      pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                      buildpath(OUTBASEDIR, i, 'legsta.txt'), i,
+                      buildpath(OUTBASEDIR, i, 'species_id.txt')]
+                     for i in PATHS.index.values]
+    @follows(kraken_sp_id_consensus)
+    @files(LEGSTA_PARAMS)
+    def legsta_contigs(infile, outfile, iso, sp_id_file):
+        '''
+        Runs legsta on the contigs if the species is Legionella pneumophila.
+        '''
+        species = get_species(sp_id_file, iso)
+        if species == 'Legionella pneumophila':
+            run_legsta(infile, outfile, iso)
 
-        ABRICATE_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
-                            pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                            buildpath(OUTBASEDIR, i, 'abricate_'+key+'.txt'),
-                            buildpath(OUTBASEDIR, i,
-                                      'abricate_'+key+'_simple.txt'),
-                            i, [key, value], ARGS.abricate_cov,
-                            ARGS.abricate_id,
-                            buildpath(OUTBASEDIR, i, 'species_id.txt')]
-                           for i in PATHS.index.values
-                           for key, value in list(ABRICATE_DBS.items())]
+
+    LISSERO_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                       pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                       buildpath(OUTBASEDIR, i, 'lissero.txt'), i,
+                       buildpath(OUTBASEDIR, i, 'species_id.txt')]
+                       for i in PATHS.index.values]
+    @follows(kraken_sp_id_consensus)
+    @files(LISSERO_PARAMS)
+    def lissero_contigs(infile, outfile, iso, sp_id_file):
+        '''
+        Runs lissero on the contigs if the species is Listeria monocytogenes.
+        '''
+        species = get_species(sp_id_file, iso)
+        if species == 'Listeria monocytogenes':
+            run_lissero(infile, outfile, iso)
+
+
+    SISTR_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                     pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                     buildpath(OUTBASEDIR, i, 'sistr.txt'), i,
+                     buildpath(OUTBASEDIR, i, 'species_id.txt'),
+                     N_THREADS] for i in PATHS.index.values]
+    @follows(kraken_sp_id_consensus)
+    @files(SISTR_PARAMS)
+    def sistr_contigs(infile, outfile, iso, sp_id_file, cpus):
+        '''
+        Runs sistr on the contigs if the genus is Salmonella.
+        '''
+        species = get_species(sp_id_file, iso)
+        if species.split()[0] == 'Salmonella':
+            run_sistr(infile, outfile, iso, cpus)
+
+    ABRICATE_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                        pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                        buildpath(OUTBASEDIR, i, 'abricate_'+key+'.txt'),
+                        buildpath(OUTBASEDIR, i,
+                                  'abricate_'+key+'_simple.txt'),
+                        i, [key, value], ARGS.abricate_cov,
+                        ARGS.abricate_id,
+                        buildpath(OUTBASEDIR, i, 'species_id.txt')]
+                       for i in PATHS.index.values
+                       for key, value in list(ABRICATE_DBS.items())]
+    @follows(kraken_contigs_sp_id)
+    @files(ABRICATE_PARAMS)
+    def abricate_contigs(infile, outfile, outfile_simple, iso,
+                         database, coverage, identity,
+                         sp_id_file):
+        '''
+        Runs Abricate on the contigs.
+        Creates an abricate result table, and an aggregate summary table.
+        '''
+        print('abricate oufile:', outfile, file=sys.stderr)
+        species = get_species(sp_id_file, iso)
+        run_abricate(infile, outfile, outfile_simple, iso, database, coverage,
+                     identity, species)
+
+
+    if ARGS.ariba_on:
+        ARIBA_PARAMS = [[[PATHS.loc[i, 'pathReads1'], PATHS.loc[i,
+                                                                'pathReads2']]
+                         if pd.notnull(PATHS.loc[i, 'pathReads1']) and
+                         pd.notnull(PATHS.loc[i, 'pathReads2']) else [],
+                         buildpath(OUTBASEDIR, i, 'ariba_'+key), i,
+                         [key, os.path.abspath(value)],
+                         buildpath(OUTBASEDIR, i)]
+                        for i in PATHS.index.values for key, value in
+                        list(ARIBA_DBS.items())]
         @follows(kraken_contigs_sp_id)
-        @files(ABRICATE_PARAMS)
-        def abricate_contigs(infile, outfile, outfile_simple, iso,
-                             database, coverage, identity,
-                             sp_id_file):
+        @jobs_limit(ARIBA_JOB_LIMIT)
+        @files(ARIBA_PARAMS)
+        def ariba_reads_minimap(infiles, outfile, iso, database,
+                                    result_basedir):
             '''
-            Runs Abricate on the contigs.
-            Creates an abricate result table, and an aggregate summary table.
+            Runs Ariba on the reads.
             '''
-            print('abricate oufile:', outfile, file=sys.stderr)
-            species = get_species(sp_id_file, iso)
-            run_abricate(infile, outfile, outfile_simple, iso, database, coverage,
-                         identity, species)
+            run_ariba(infiles, outfile, iso, database, result_basedir)
 
 
-        if ARGS.ariba_on:
-            ARIBA_PARAMS = [[[PATHS.loc[i, 'pathReads1'], PATHS.loc[i,
-                                                                    'pathReads2']]
-                             if pd.notnull(PATHS.loc[i, 'pathReads1']) and
+    CONTIG_METRICS_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
+                              pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
+                              buildpath(OUTBASEDIR, i, 'yield_contigs.txt'),
+                              str(i)] for i in PATHS.index.values]
+    @follows(kraken_contigs_sp_id)
+    @files(CONTIG_METRICS_PARAMS)
+    def seqtk_comp_contigs(infile, outfile, iso):
+        '''
+        Runs seqtk comp on the contigs.
+        '''
+        run_seqtk_comp(infile, outfile, iso)
+
+
+    READS_METRICS_PARAMS = [[[PATHS.loc[i, 'pathReads1'],
+                              PATHS.loc[i, 'pathReads2']] if
+                             pd.notnull(PATHS.loc[i, 'pathReads1']) and
                              pd.notnull(PATHS.loc[i, 'pathReads2']) else [],
-                             buildpath(OUTBASEDIR, i, 'ariba_'+key), i,
-                             [key, os.path.abspath(value)],
-                             buildpath(OUTBASEDIR, i)]
-                            for i in PATHS.index.values for key, value in
-                            list(ARIBA_DBS.items())]
-            @follows(kraken_contigs_sp_id)
-            @jobs_limit(ARIBA_JOB_LIMIT)
-            @files(ARIBA_PARAMS)
-            def ariba_reads_minimap(infiles, outfile, iso, database,
-                                        result_basedir):
-                '''
-                Runs Ariba on the reads.
-                '''
-                run_ariba(infiles, outfile, iso, database, result_basedir)
+                             buildpath(OUTBASEDIR, i, 'yield_reads.txt'),
+                             str(i)] for i in PATHS.index.values]
+    @follows(kraken_contigs_sp_id)
+    @files(READS_METRICS_PARAMS)
+    def seqtk_fqchk_reads(infiles, outfile, iso):
+        '''
+        Runs seqtk fqchk on the reads.
+        '''
+        run_seqtk_fqchk(infiles, outfile, iso)
 
 
-        CONTIG_METRICS_PARAMS = [[[PATHS.loc[i, 'pathContigs']] if
-                                  pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
-                                  buildpath(OUTBASEDIR, i, 'yield_contigs.txt'),
-                                  str(i)] for i in PATHS.index.values]
+    def write_summary_df_to_file(infile_dfs_list, outfile_df, iso):
+        '''
+        Take a list of dfs, join them and write them to file.  The infile
+        list is reduced to only those files that exist in the directory.
+        '''
+        dfs = [read_pandas_df(infile) for infile in infile_dfs_list
+               if os.path.exists(infile)]
+        df2 = PATHS.loc[iso:iso, ['pathContigs', 'pathReads1',
+                                  'pathReads2']]
+        df3 = df2.fillna('No input file')
+        dfs.append(df3)
+        df4 = pd.concat(dfs, axis=1)
+        write_pandas_df(outfile_df, df4) ## complex outfile
+
+    RESULT_FILES_PER_ISO = [[buildpath(OUTBASEDIR, i),
+                             buildpath(OUTBASEDIR, i, 'summary.csv'),
+                             buildpath(OUTBASEDIR, i, 'summary_simple.csv'),
+                             str(i)] for i in PATHS.index.values]
+    if ARGS.ariba_on:
+        @follows(mlst_contigs, abricate_contigs, seqtk_comp_contigs,
+                 seqtk_fqchk_reads, ariba_reads_minimap,
+                 legsta_contigs, lissero_contigs,
+                 meningotype_contigs, ngmaster_contigs, sistr_contigs)
+        @files(RESULT_FILES_PER_ISO)
+        # Add the file paths to the summary.csv file.
+        def summarise_intra_iso_results(infolder, outfile,
+                                        outfile_simple, iso):
+            '''
+            Take a list of all the results files for each isolate and
+            cbind them into on summary.csv pd.df for the isolate.
+            '''
+#             print('Gathering results files from '+infolder, file=sys.stderr)
+            remove_file(outfile)
+            remove_file(outfile_simple)
+            # Generate summary.csv, including ariba table.
+            infiles_complex = [buildpath(OUTBASEDIR, iso, i) for i in
+                               ['kraken_contigs.txt',
+                                'kraken_reads.txt',
+                                'species_id.txt',
+                                'mlst.txt',
+                                'ngmaster.txt',
+                                'meningotype.txt',
+                                'sistr.txt',
+                                'legsta.txt',
+                                'lissero.txt',
+                                'yield_contigs.txt',
+                                'yield_reads.txt'] +
+                               [buildpath(OUTBASEDIR, iso,
+                                          'abricate_'+key+'.txt')
+                                for key, value in list(ABRICATE_DBS.items())] +
+                               [buildpath(OUTBASEDIR, iso,
+                                          'ariba_'+key+'_summary_melted.txt')
+                                for key, value in list(ARIBA_DBS.items())]]
+#             print(infiles_complex)
+            # Requires the os.path.exists(infile) otherwise looks for
+            # ariba even if reads weren't there for ariba analysis
+            write_summary_df_to_file(infiles_complex, outfile, iso)
+
+            # Generate summary_simple.csv, including ariba table.
+            infiles_simple = [buildpath(OUTBASEDIR, iso, i) for i in
+                              ['kraken_contigs.txt',
+                               'kraken_reads.txt',
+                               'species_id.txt',
+                               'mlst.txt',
+                               'ngmaster.txt',
+                               'meningotype.txt',
+                               'sistr.txt',
+                               'legsta.txt',
+                               'lissero.txt',
+                               'yield_contigs.txt',
+                               'yield_reads.txt'] +
+                              [buildpath(OUTBASEDIR, iso,
+                                         'abricate_'+key+'_simple.txt')
+                               for key, value in list(ABRICATE_DBS.items())] +
+                               [buildpath(OUTBASEDIR, iso,
+                                          'ariba_summary_melted.txt')
+                                for key, value in list(ARIBA_DBS.items())]]
+            write_summary_df_to_file(infiles_simple, outfile_simple, iso)
+
+
+    else:
+        @follows(mlst_contigs, abricate_contigs, seqtk_comp_contigs,
+                 seqtk_fqchk_reads, legsta_contigs, lissero_contigs,
+                 meningotype_contigs, ngmaster_contigs, sistr_contigs)
+        @files(RESULT_FILES_PER_ISO)
+        # Add the file paths to the summary.csv file.
+        def summarise_intra_iso_results(infolder, outfile, outfile_simple,
+                                        iso):
+            '''
+            Take a list of all the results files for each isolate and cbind
+            them into on summary.csv pd.df for the isolate.
+            '''
+#             print('Gathering results files from '+infolder, file=sys.stderr)
+            remove_file(outfile)
+            remove_file(outfile_simple)
+            # Generate complex outfile.
+            infiles_complex = [buildpath(OUTBASEDIR, iso, i) for i in
+                               ['kraken_contigs.txt',
+                                'kraken_reads.txt',
+                                'species_id.txt',
+                                'mlst.txt',
+                                'ngmaster.txt',
+                                'meningotype.txt',
+                                'sistr.txt',
+                                'legsta.txt',
+                                'lissero.txt',
+                                'yield_contigs.txt',
+                                'yield_reads.txt'] +
+                               [buildpath(OUTBASEDIR, iso,
+                                          'abricate_'+key+'.txt')
+                                for key, value in list(ABRICATE_DBS.items())]]
+            write_summary_df_to_file(infiles_complex, outfile, iso)
+
+            # Generate simple outfile
+            infiles_simple = [buildpath(OUTBASEDIR, iso, i) for i in
+                              ['kraken_contigs.txt',
+                               'kraken_reads.txt',
+                               'species_id.txt',
+                               'mlst.txt',
+                               'ngmaster.txt',
+                               'meningotype.txt',
+                               'sistr.txt',
+                               'legsta.txt',
+                               'lissero.txt',
+                               'yield_contigs.txt',
+                               'yield_reads.txt'] +
+                               [buildpath(OUTBASEDIR, iso,
+                                          'abricate_'+key+'_simple.txt')
+                                for key, value in list(ABRICATE_DBS.items())]]
+            write_summary_df_to_file(infiles_simple, outfile_simple, iso)
+
+
+    # Create a list of all the summary files generated for each isolate.
+    SUMMARYFILE_PER_ISO = [[[buildpath(OUTBASEDIR, i, 'summary.csv')
+                             for i in PATHS.index.values],
+                            [buildpath(OUTBASEDIR, i, 'summary_simple.csv')
+                             for i in PATHS.index.values]]]
+    @follows(summarise_intra_iso_results)
+    @files(SUMMARYFILE_PER_ISO)
+    def merge_summaries(summaryfiles_list, summaryfiles_list_simple):
+        '''
+        Take a list of all the per-isolate summary.csv files, and cbind them
+        into a single final result csv file, which goes into OUTBASEDIR.
+        '''
+        def join_infiles(infile_list, outfile):
+            '''
+            Take the infiles in infile_list and join them to a single df.
+            '''
+            # Join along axis 0 (rows).
+            write_pandas_df(outfile,
+                            pd.concat([read_pandas_df(infile)
+                                       for infile in infile_list],
+                                      axis=0))
+
+        outfile = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
+                            '_metadataAll.csv')
+        outfile_simple = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
+                                   '_metadataAll_simplified.csv')
+
+        join_infiles(summaryfiles_list, outfile)
+        join_infiles(summaryfiles_list_simple, outfile_simple)
+        print('Summary metadata (detailed) written to '+outfile,
+              file=sys.stderr)
+        print('Summary metadata (simplified) written to '+outfile_simple,
+              file=sys.stderr)
+
+
+    N_CONTIG_FILES = PATHS[PATHS.pathContigs.notnull()]
+    if ARGS.infer_tree_on and len(N_CONTIG_FILES) < 3:
+        TREE_OUT_MESSAGE = 'No tree written as less than three isolates ' +\
+                           'had assembly (contig) files'
+        print(TREE_OUT_MESSAGE, file=sys.stderr)
+
+
+    if ARGS.infer_tree_on and len(N_CONTIG_FILES) >= 3:
+        SYMLINK_PARAMS = [[PATHS.loc[i, 'pathContigs'],
+                           buildpath(OUTBASEDIR, i,
+                                     i+'_contigs.fa')] for
+                          i in PATHS.index.values
+                          if pd.notnull(PATHS.loc[i, 'pathContigs'])]
         @follows(kraken_contigs_sp_id)
-        @files(CONTIG_METRICS_PARAMS)
-        def seqtk_comp_contigs(infile, outfile, iso):
+        @files(SYMLINK_PARAMS)
+        def symlink_to_contigs(infile, outfile):
             '''
-            Runs seqtk comp on the contigs.
+            Create symlinks for contigs files
             '''
-            run_seqtk_comp(infile, outfile, iso)
+            symlink_contigs(infile, outfile)
 
+        MASH_PARAMS = [[[i[1] for i in SYMLINK_PARAMS],
+                        buildpath(OUTBASEDIR,
+                                  'mashtree_'+'dist_' +
+                                  ISOLATE_PATHS_BASENAME+'.mat'),
+                        buildpath(OUTBASEDIR,
+                                  'mashtree_temp_'+
+                                  ISOLATE_PATHS_BASENAME+'.tre'),
+                        N_CPU]]
+        if os.path.exists(MASH_PARAMS[0][1]):
+            with open(MASH_PARAMS[0][1], 'r') as input:
+                firstline = input.readline().replace('_contigs.fa', '') \
+                            .split()[1:]
+                if set(firstline) != set([i for i in PATHS.index.values
+                          if pd.notnull(PATHS.loc[i, 'pathContigs'])]):
+                    os.rename(MASH_PARAMS[0][1],
+                              MASH_PARAMS[0][1].replace('.mat',
+                                                        '_%d.mat') % time())
 
-        READS_METRICS_PARAMS = [[[PATHS.loc[i, 'pathReads1'],
-                                  PATHS.loc[i, 'pathReads2']] if
-                                 pd.notnull(PATHS.loc[i, 'pathReads1']) and
-                                 pd.notnull(PATHS.loc[i, 'pathReads2']) else [],
-                                 buildpath(OUTBASEDIR, i, 'yield_reads.txt'),
-                                 str(i)] for i in PATHS.index.values]
-        @follows(kraken_contigs_sp_id)
-        @files(READS_METRICS_PARAMS)
-        def seqtk_fqchk_reads(infiles, outfile, iso):
-            '''
-            Runs seqtk fqchk on the reads.
-            '''
-            run_seqtk_fqchk(infiles, outfile, iso)
+        @follows(symlink_to_contigs, merge_summaries)
+        @files(MASH_PARAMS)
+        def mashtree(infiles, outfile, treefile, N_CPU):
+            # Get first line of outfile
+            run_mashtree(infiles, outfile, treefile, N_CPU)
 
-
-        def write_summary_df_to_file(infile_dfs_list, outfile_df, iso):
-            '''
-            Take a list of dfs, join them and write them to file.  The infile
-            list is reduced to only those files that exist in the directory.
-            '''
-            dfs = [read_pandas_df(infile) for infile in infile_dfs_list
-                   if os.path.exists(infile)]
-            df2 = PATHS.loc[iso:iso, ['pathContigs', 'pathReads1',
-                                      'pathReads2']]
-            df3 = df2.fillna('No input file')
-            dfs.append(df3)
-            df4 = pd.concat(dfs, axis=1)
-            write_pandas_df(outfile_df, df4) ## complex outfile
-
-        RESULT_FILES_PER_ISO = [[buildpath(OUTBASEDIR, i),
-                                 buildpath(OUTBASEDIR, i, 'summary.csv'),
-                                 buildpath(OUTBASEDIR, i, 'summary_simple.csv'),
-                                 str(i)] for i in PATHS.index.values]
-        if ARGS.ariba_on:
-            @follows(mlst_contigs, abricate_contigs, seqtk_comp_contigs,
-                     seqtk_fqchk_reads, ariba_reads_minimap,
-                     legsta_contigs, lissero_contigs,
-                     meningotype_contigs, ngmaster_contigs, sistr_contigs)
-            @files(RESULT_FILES_PER_ISO)
-            # Add the file paths to the summary.csv file.
-            def summarise_intra_iso_results(infolder, outfile,
-                                            outfile_simple, iso):
-                '''
-                Take a list of all the results files for each isolate and 
-                cbind them into on summary.csv pd.df for the isolate.
-                '''
-    #             print('Gathering results files from '+infolder, file=sys.stderr)
-                remove_file(outfile)
-                remove_file(outfile_simple)
-                # Generate summary.csv, including ariba table.
-                infiles_complex = [buildpath(OUTBASEDIR, iso, i) for i in
-                                   ['kraken_contigs.txt',
-                                    'kraken_reads.txt',
-                                    'species_id.txt',
-                                    'mlst.txt',
-                                    'ngmaster.txt',
-                                    'meningotype.txt',
-                                    'sistr.txt',
-                                    'legsta.txt',
-                                    'lissero.txt',
-                                    'yield_contigs.txt',
-                                    'yield_reads.txt'] +
-                                   [buildpath(OUTBASEDIR, iso,
-                                              'abricate_'+key+'.txt')
-                                    for key, value in list(ABRICATE_DBS.items())] +
-                                   [buildpath(OUTBASEDIR, iso,
-                                              'ariba_'+key+'_summary_melted.txt')
-                                    for key, value in list(ARIBA_DBS.items())]]
-    #             print(infiles_complex)
-                # Requires the os.path.exists(infile) otherwise looks for 
-                # ariba even if reads weren't there for ariba analysis
-                write_summary_df_to_file(infiles_complex, outfile, iso)
-
-                # Generate summary_simple.csv, including ariba table.
-                infiles_simple = [buildpath(OUTBASEDIR, iso, i) for i in
-                                  ['kraken_contigs.txt',
-                                   'kraken_reads.txt',
-                                   'species_id.txt',
-                                   'mlst.txt',
-                                   'ngmaster.txt',
-                                   'meningotype.txt',
-                                   'sistr.txt',
-                                   'legsta.txt',
-                                   'lissero.txt',
-                                   'yield_contigs.txt',
-                                   'yield_reads.txt'] +
-                                  [buildpath(OUTBASEDIR, iso,
-                                             'abricate_'+key+'_simple.txt')
-                                   for key, value in list(ABRICATE_DBS.items())] +
-                                   [buildpath(OUTBASEDIR, iso,
-                                              'ariba_summary_melted.txt')
-                                    for key, value in list(ARIBA_DBS.items())]]
-                write_summary_df_to_file(infiles_simple, outfile_simple, iso)
-
-
-        else:
-            @follows(mlst_contigs, abricate_contigs, seqtk_comp_contigs,
-                     seqtk_fqchk_reads, legsta_contigs, lissero_contigs,
-                     meningotype_contigs, ngmaster_contigs, sistr_contigs)
-            @files(RESULT_FILES_PER_ISO)
-            # Add the file paths to the summary.csv file.
-            def summarise_intra_iso_results(infolder, outfile, outfile_simple,
-                                            iso):
-                '''
-                Take a list of all the results files for each isolate and cbind
-                them into on summary.csv pd.df for the isolate.
-                '''
-    #             print('Gathering results files from '+infolder, file=sys.stderr)
-                remove_file(outfile)
-                remove_file(outfile_simple)
-                # Generate complex outfile.
-                infiles_complex = [buildpath(OUTBASEDIR, iso, i) for i in
-                                   ['kraken_contigs.txt',
-                                    'kraken_reads.txt',
-                                    'species_id.txt',
-                                    'mlst.txt',
-                                    'ngmaster.txt',
-                                    'meningotype.txt',
-                                    'sistr.txt',
-                                    'legsta.txt',
-                                    'lissero.txt',
-                                    'yield_contigs.txt',
-                                    'yield_reads.txt'] +
-                                   [buildpath(OUTBASEDIR, iso,
-                                              'abricate_'+key+'.txt')
-                                    for key, value in list(ABRICATE_DBS.items())]]
-                write_summary_df_to_file(infiles_complex, outfile, iso)
-
-                # Generate simple outfile
-                infiles_simple = [buildpath(OUTBASEDIR, iso, i) for i in
-                                  ['kraken_contigs.txt',
-                                   'kraken_reads.txt',
-                                   'species_id.txt',
-                                   'mlst.txt',
-                                   'ngmaster.txt',
-                                   'meningotype.txt',
-                                   'sistr.txt',
-                                   'legsta.txt',
-                                   'lissero.txt',
-                                   'yield_contigs.txt',
-                                   'yield_reads.txt'] +
-                                   [buildpath(OUTBASEDIR, iso,
-                                              'abricate_'+key+'_simple.txt')
-                                    for key, value in list(ABRICATE_DBS.items())]]
-                write_summary_df_to_file(infiles_simple, outfile_simple, iso)
-
-
-        # Create a list of all the summary files generated for each isolate.
-        SUMMARYFILE_PER_ISO = [[[buildpath(OUTBASEDIR, i, 'summary.csv')
-                                 for i in PATHS.index.values], 
-                                [buildpath(OUTBASEDIR, i, 'summary_simple.csv')
-                                 for i in PATHS.index.values]]]
-        @follows(summarise_intra_iso_results)
-        @files(SUMMARYFILE_PER_ISO)
-        def merge_summaries(summaryfiles_list, summaryfiles_list_simple):
-            '''
-            Take a list of all the per-isolate summary.csv files, and cbind them
-            into a single final result csv file, which goes into OUTBASEDIR.
-            '''
-            def join_infiles(infile_list, outfile):
-                '''
-                Take the infiles in infile_list and join them to a single df.
-                '''
-                # Join along axis 0 (rows).
-                write_pandas_df(outfile,
-                                pd.concat([read_pandas_df(infile)
-                                           for infile in infile_list],
-                                          axis=0))
-
-            outfile = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
-                                '_metadataAll.csv')
-            outfile_simple = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
-                                       '_metadataAll_simplified.csv')
-         
-            join_infiles(summaryfiles_list, outfile)
-            join_infiles(summaryfiles_list_simple, outfile_simple)
-            print('Summary metadata (detailed) written to '+outfile,
-                  file=sys.stderr)
-            print('Summary metadata (simplified) written to '+outfile_simple,
-                  file=sys.stderr)
-
-
-        N_CONTIG_FILES = PATHS[PATHS.pathContigs.notnull()]
-        if ARGS.infer_tree_on and len(N_CONTIG_FILES) < 3:
-            TREE_OUT_MESSAGE = 'No tree written as less than three isolates ' +\
-                               'had assembly (contig) files'
-            print(TREE_OUT_MESSAGE, file=sys.stderr)
-
-
-        if ARGS.infer_tree_on and len(N_CONTIG_FILES) >= 3:
-            SYMLINK_PARAMS = [[PATHS.loc[i, 'pathContigs'],
-                               buildpath(OUTBASEDIR, i,
-                                         i+'_contigs.fa')] for
-                              i in PATHS.index.values
-                              if pd.notnull(PATHS.loc[i, 'pathContigs'])]
-            @follows(kraken_contigs_sp_id)
-            @files(SYMLINK_PARAMS)
-            def symlink_to_contigs(infile, outfile):
-                '''
-                Create symlinks for contigs files
-                '''
-                symlink_contigs(infile, outfile)
-
-            MASH_PARAMS = [[[i[1] for i in SYMLINK_PARAMS],
+        MASHTREE_PARAMS = [[MASH_PARAMS[0][2],
                             buildpath(OUTBASEDIR,
-                                      'mashtree_'+'dist_' +
-                                      ISOLATE_PATHS_BASENAME+'.mat'),
-                            buildpath(OUTBASEDIR,
-                                      'mashtree_temp_'+
-                                      ISOLATE_PATHS_BASENAME+'.tre'),
-                            N_CPU]]
-            if os.path.exists(MASH_PARAMS[0][1]):
-                with open(MASH_PARAMS[0][1], 'r') as input:
-                    firstline = input.readline().replace('_contigs.fa', '') \
-                                .split()[1:]
-                    if set(firstline) != set([i for i in PATHS.index.values
-                              if pd.notnull(PATHS.loc[i, 'pathContigs'])]):
-                        os.rename(MASH_PARAMS[0][1],
-                                  MASH_PARAMS[0][1].replace('.mat',
-                                                            '_%d.mat') % time())
-
-            @follows(symlink_to_contigs, merge_summaries)
-            @files(MASH_PARAMS)
-            def mashtree(infiles, outfile, treefile, N_CPU):
-                # Get first line of outfile
-                run_mashtree(infiles, outfile, treefile, N_CPU)
-
-            MASHTREE_PARAMS = [[MASH_PARAMS[0][2],
-                                buildpath(OUTBASEDIR,
-                                          ISOLATE_PATHS_BASENAME +\
-                                          '_mashtree.tre'),
-                                MASH_PARAMS[0][1]]]
-            @follows(mashtree)
-            @files(MASHTREE_PARAMS)
-            def relabel_mashtree(infile, outfile, distmat):
-                '''
-                Read in mashtree, rename the tips.
-                '''
-                treestring = Path(infile).read_text()
-                tre = Tree(treestring, format=1)
-                relabel_tree_tips(tre, outfile, distmat)
-                print('Treefile written to '+outfile, file=sys.stderr)
+                                      ISOLATE_PATHS_BASENAME +\
+                                      '_mashtree.tre'),
+                            MASH_PARAMS[0][1]]]
+        @follows(mashtree)
+        @files(MASHTREE_PARAMS)
+        def relabel_mashtree(infile, outfile, distmat):
+            '''
+            Read in mashtree, rename the tips.
+            '''
+            treestring = Path(infile).read_text()
+            tre = Tree(treestring, format=1)
+            relabel_tree_tips(tre, outfile, distmat)
+            print('Treefile written to '+outfile, file=sys.stderr)
 
 
         # Run the pipeline
