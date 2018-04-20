@@ -1209,55 +1209,55 @@ if ARGS.subparser_name == 'run':
             print('Treefile written to '+outfile, file=sys.stderr)
 
 
-        # Run the pipeline
-        import tempfile
+    # Run the pipeline
+    import tempfile
 
-        def mv_tmp_sqlite(temp_sqlite_db, perm_sqlite_db):
-            try:
-                os.popen(f'mv {temp_sqlite_db} {perm_sqlite_db}')
-                print(f"Moved {temp_sqlite_db} to {perm_sqlite_db}.")
-            except IOError:
-                print(f'Unable to move {temp_sqlite_db} to {OUTBASEDIR}',
-                      file=sys.stderr)
+    def mv_tmp_sqlite(temp_sqlite_db, perm_sqlite_db):
+        try:
+            os.popen(f'mv {temp_sqlite_db} {perm_sqlite_db}')
+            print(f"Moved {temp_sqlite_db} to {perm_sqlite_db}.")
+        except IOError:
+            print(f'Unable to move {temp_sqlite_db} to {OUTBASEDIR}',
+                  file=sys.stderr)
 
-        with tempfile.TemporaryDirectory() as tmpfile:
-            db_name = '.ruffus_history.sqlite'
-            temp_sqlite_db = os.path.join(tmpfile, db_name)
-            perm_sqlite_db = os.path.join(OUTBASEDIR,
-                                          db_name)
-            if os.path.exists(perm_sqlite_db):
-                os.popen(f'cp {perm_sqlite_db} {temp_sqlite_db}')
-                print(f'Copied {perm_sqlite_db} to {temp_sqlite_db}.')
-            else:
-                print(f'Making new SQLite db at {temp_sqlite_db}')
-            if ARGS.force_rebuild_summary_files:
-                remove_file(buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
-                                      '_metadataAll.csv'))
-                remove_file(buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
-                                      '_metadataAll_simplified.csv'))
-                pipeline_run(multiprocess=N_CPU,
-                             forcedtorun_tasks=[summarise_intra_iso_results],
-                             history_file=temp_sqlite_db)
-            else:
-                pipeline_run(multiprocess=N_CPU,
-                             history_file=temp_sqlite_db)
-            mv_tmp_sqlite(temp_sqlite_db, perm_sqlite_db)
-            print('\nLength of infile list as string: ' +
-                  str(len(', '.join([buildpath(OUTBASEDIR, i)
-                                     for i in PATHS.index.values]))), file=sys.stderr)
+    with tempfile.TemporaryDirectory() as tmpfile:
+        db_name = '.ruffus_history.sqlite'
+        temp_sqlite_db = os.path.join(tmpfile, db_name)
+        perm_sqlite_db = os.path.join(OUTBASEDIR,
+                                      db_name)
+        if os.path.exists(perm_sqlite_db):
+            os.popen(f'cp {perm_sqlite_db} {temp_sqlite_db}')
+            print(f'Copied {perm_sqlite_db} to {temp_sqlite_db}.')
+        else:
+            print(f'Making new SQLite db at {temp_sqlite_db}')
+        if ARGS.force_rebuild_summary_files:
+            remove_file(buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
+                                  '_metadataAll.csv'))
+            remove_file(buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
+                                  '_metadataAll_simplified.csv'))
+            pipeline_run(multiprocess=N_CPU,
+                         forcedtorun_tasks=[summarise_intra_iso_results],
+                         history_file=temp_sqlite_db)
+        else:
+            pipeline_run(multiprocess=N_CPU,
+                         history_file=temp_sqlite_db)
+        mv_tmp_sqlite(temp_sqlite_db, perm_sqlite_db)
+        print('\nLength of infile list as string: ' +
+              str(len(', '.join([buildpath(OUTBASEDIR, i)
+                                 for i in PATHS.index.values]))), file=sys.stderr)
 
 
-            if len(', '.join([buildpath(OUTBASEDIR, i)
-                              for i in PATHS.index.values])) < 16000:
-                pipeline_printout_graph(buildpath(OUTBASEDIR,
-                                                  ISOLATE_PATHS_BASENAME +\
-                                                  '_flowchart.svg'))
+        if len(', '.join([buildpath(OUTBASEDIR, i)
+                          for i in PATHS.index.values])) < 16000:
+            pipeline_printout_graph(buildpath(OUTBASEDIR,
+                                              ISOLATE_PATHS_BASENAME +\
+                                              '_flowchart.svg'))
 
-            if len(', '.join([buildpath(OUTBASEDIR, i)
-                              for i in PATHS.index.values])) >= 16000:
-                print('Too many input files to generate a flowchart.\n' +
-                      'Run with less isolates and the same options ' +
-                      'to the get the image.', file=sys.stderr)
+        if len(', '.join([buildpath(OUTBASEDIR, i)
+                          for i in PATHS.index.values])) >= 16000:
+            print('Too many input files to generate a flowchart.\n' +
+                  'Run with less isolates and the same options ' +
+                  'to the get the image.', file=sys.stderr)
 
 
 if ARGS.subparser_name == 'merge':
