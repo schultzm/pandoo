@@ -1,3 +1,4 @@
+.idea*
 benchmark.txt
 requirements.txt
 pandoo-*
