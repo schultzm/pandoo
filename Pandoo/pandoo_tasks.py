@@ -800,8 +800,13 @@ def symlink_contigs(infile, outfile):
     '''
     Create symlinks
     '''
-    cmd = 'ln -s '+infile+' '+outfile
-    os.system(cmd)
+    try:
+        if not os.path.islink(path):
+            cmd = 'ln -s '+infile+' '+outfile
+            os.system(cmd)
+    except:
+        print(f"The following symlink already exists: {outfile} -> {infile}",
+              file=sys.stderr)
 
 def run_mashtree(infiles, outfile, treefile, cpus):
     mashtmp = 'tmp_msh'
@@ -823,7 +828,7 @@ def run_mashtree(infiles, outfile, treefile, cpus):
         relative_paths = [os.path.relpath(i) for i in infiles]
         outhandle.write(' '.join(relative_paths))
         print(outhandle_name, file=sys.stderr)
-    cmd = 'cat '+outhandle_name+' | xargs mashtree.pl ' +\
+    cmd = 'cat '+outhandle_name+' | xargs mashtree ' +\
           ' --numcpus '+str(cpus)+' --outmatrix '+outfile +\
           ' --sort-order random --tempdir ' +\
           os.path.join(os.path.split(outfile)[0], 'tmp_msh')+' > ' +\

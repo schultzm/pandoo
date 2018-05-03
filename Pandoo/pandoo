@@ -342,7 +342,7 @@ if ARGS.subparser_name == 'check':
     SOFTWARES = ['abricate',
                  'mlst',
                  'seqtk',
-                 'mashtree.pl',
+                 'mashtree',
                  'meningotype',
                  'ngmaster',
                  'sistr',
