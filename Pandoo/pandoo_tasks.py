@@ -181,7 +181,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
         os.system(cmd)
         # Here we open the abricate results
         ab_data = pd.read_table(outfile, sep='\t', header=0)
-        print(ab_data)
+        print(ab_data, file=sys.stderr)
         ab_results_df_list = []
         ab_results_simplified = defaultdict(list)
         genes_dict = {'GENES':defaultdict(list)}
@@ -290,7 +290,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
                                                      isolate), version_df],
                                    axis=1)
     write_pandas_df(outfile_simple, abricate_df_simple)
-    print(outfile_simple)
+    print(outfile_simple, file=sys.stderr)
 
 
 

@@ -22,7 +22,7 @@
         'pandoo merge -h'
 
 
-    Copyright (C) 2017 Mark B Schultz
+    Copyright (C) 2018 Mark B Schultz
     https://github.com/schultzm/pandoo
     email: dr.mark.schultz@gmail.com
 
@@ -489,7 +489,8 @@ if ARGS.subparser_name == 'run':
             # Return the str(cellvalue) to get past error if NaN (i.e., empty cell)
         else:
             species_df = pd.DataFrame({iso: ['No_hits']})
-        print(f'Species: {str(species_df.loc[iso].iloc[0])}')
+#         print(f'Species: {str(species_df.loc[iso].iloc[0])}',
+#               file=sys.stderr)
         return str(species_df.loc[iso].iloc[0])
 
     def remove_file(filename):
@@ -1075,7 +1076,6 @@ if ARGS.subparser_name == 'run':
             Take a list of all the results files for each isolate and cbind
             them into on summary.csv pd.df for the isolate.
             '''
-#             print('Gathering results files from '+infolder, file=sys.stderr)
             remove_file(outfile)
             remove_file(outfile_simple)
             # Generate complex outfile.
@@ -1163,8 +1163,6 @@ if ARGS.subparser_name == 'run':
                                      i+'_contigs.fa')] for
                           i in PATHS.index.values
                           if pd.notnull(PATHS.loc[i, 'pathContigs'])]
-        print(SYMLINK_PARAMS)
-#         sys.exit()
         @follows(kraken_contigs_sp_id)
         @files(SYMLINK_PARAMS)
         def symlink_to_contigs(infile, outfile):
@@ -1220,7 +1218,8 @@ if ARGS.subparser_name == 'run':
     def mv_tmp_sqlite(temp_sqlite_db, perm_sqlite_db):
         try:
             os.popen(f'mv {temp_sqlite_db} {perm_sqlite_db}')
-            print(f"Moved {temp_sqlite_db} to {perm_sqlite_db}.")
+            print(f"Moved {temp_sqlite_db} to {perm_sqlite_db}.",
+                  file=sys.stderr)
         except IOError:
             print(f'Unable to move {temp_sqlite_db} to {OUTBASEDIR}',
                   file=sys.stderr)
@@ -1232,9 +1231,11 @@ if ARGS.subparser_name == 'run':
                                       db_name)
         if os.path.exists(perm_sqlite_db):
             os.popen(f'cp {perm_sqlite_db} {temp_sqlite_db}')
-            print(f'Copied {perm_sqlite_db} to {temp_sqlite_db}.')
+            print(f'Copied {perm_sqlite_db} to {temp_sqlite_db}.',
+                  file=sys.stderr)
         else:
-            print(f'Making new SQLite db at {temp_sqlite_db}')
+            print(f'Making new SQLite db at {temp_sqlite_db}',
+                  file=sys.stderr)
         if ARGS.force_rebuild_summary_files:
             remove_file(buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
                                   '_metadataAll.csv'))
