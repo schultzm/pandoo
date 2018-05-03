@@ -801,7 +801,7 @@ def symlink_contigs(infile, outfile):
     Create symlinks
     '''
     try:
-        if not os.path.islink(path):
+        if not os.path.islink(outfile):
             cmd = 'ln -s '+infile+' '+outfile
             os.system(cmd)
     except:

@@ -1163,6 +1163,8 @@ if ARGS.subparser_name == 'run':
                                      i+'_contigs.fa')] for
                           i in PATHS.index.values
                           if pd.notnull(PATHS.loc[i, 'pathContigs'])]
+        print(SYMLINK_PARAMS)
+#         sys.exit()
         @follows(kraken_contigs_sp_id)
         @files(SYMLINK_PARAMS)
         def symlink_to_contigs(infile, outfile):
