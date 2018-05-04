@@ -298,12 +298,12 @@ SUBPARSER_INPUT.add_argument('-g', '--skip_right_rows', help='Number of rows \
                              a first-row header.', type=int,
                              dest='skip_right_rows', default=0, required=False)
 SUBPARSER_INPUT.add_argument('-x', '--suffix_expansion_on',
-                             help='With suffix expansion on \
-                             (default), then xxxx-xxxxxx is the index \
+                             help='Switch. With suffix expansion on \
+                             (default is off), then xxxx-xxxxxx is the index \
                              containing the pandas MultiIndexes of \
                              xxxx-xxxxxx-1,xxxx-xxxxxx-2,xxxx-xxxxxx-2-a,\
-                             xxxx-xxxxxx-n???).  Switch off if \
-                             MultiIndex is not desired',
+                             xxxx-xxxxxx-n???).  Switch on if \
+                             MultiIndex is desired',
                              action='store_true', required=False,
                              dest='suffix_expansion_on', default=False)
 ARGS = PARSER.parse_args()
