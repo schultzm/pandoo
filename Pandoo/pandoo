@@ -270,13 +270,11 @@ SUBPARSER_INPUT.add_argument('-f', '--format_left_table',
                              required=False)
 SUBPARSER_INPUT.add_argument('-s', '--skip_left_rows', help='Number of rows \
                              to skip in the left_table \
-                             before reaching the header.  Default=4.  \
-                             Skip 4 rows would \
-                             start reading the header on row 5 (NB: 1-based \
-                             indexing).  4 is default \
-                             to facilitate reading of MDU LIMS tables with \
-                             a row 5 header.', type=int,
-                             dest='skip_left_rows', default=4, required=False)
+                             before reaching the header.  Default=0.  \
+                             Skip 0 rows would \
+                             start reading the header on row 1 (NB: 1-based \
+                             indexing).', type=int,
+                             dest='skip_left_rows', default=0, required=False)
 SUBPARSER_INPUT.add_argument('-r', '--path_right_table', 
                              help='Path to right_table (e.g., pandoo \
                              output.csv files).', 
@@ -299,15 +297,15 @@ SUBPARSER_INPUT.add_argument('-g', '--skip_right_rows', help='Number of rows \
                              to facilitate reading of pandoo tables \
                              a first-row header.', type=int,
                              dest='skip_right_rows', default=0, required=False)
-SUBPARSER_INPUT.add_argument('-x', '--suffix_expansion_off',
+SUBPARSER_INPUT.add_argument('-x', '--suffix_expansion_on',
                              help='With suffix expansion on \
                              (default), then xxxx-xxxxxx is the index \
                              containing the pandas MultiIndexes of \
                              xxxx-xxxxxx-1,xxxx-xxxxxx-2,xxxx-xxxxxx-2-a,\
                              xxxx-xxxxxx-n???).  Switch off if \
                              MultiIndex is not desired',
-                             action='store_false', required=False,
-                             dest='suffix_expansion_off', default=True)
+                             action='store_true', required=False,
+                             dest='suffix_expansion_on', default=False)
 ARGS = PARSER.parse_args()
 
 # if hasattr(ARGS, 'func'):
@@ -1286,7 +1284,12 @@ if ARGS.subparser_name == 'merge':
         '''
         Convert the index in the table to dual index.
         '''
-        if ARGS.suffix_expansion_off:
+        if ARGS.suffix_expansion_on:
+            arrays = [np.array([i for i in table.index.values]),
+                      np.array(table.index.values)]
+            table.index = pd.MultiIndex.from_arrays(arrays, names=[u'Left',
+                                                                   u'Right'])
+        else:
             # Arrays contain the split index e.g. xxxx-xxxxxx-1 goes with
             # xxxx-xxxxxx.
             arrays = [np.array(['-'.join(i.split('-')[:2])
@@ -1294,13 +1297,7 @@ if ARGS.subparser_name == 'merge':
                       np.array(table.index.values)]
             table.index = pd.MultiIndex.from_arrays(arrays, names=[u'Left',
                                                                    u'Right'])
-            return table
-        else:
-            arrays = [np.array([i for i in table.index.values]),
-                      np.array(table.index.values)]
-            table.index = pd.MultiIndex.from_arrays(arrays, names=[u'Left',
-                                                                   u'Right'])
-            return table
+        return table
 
     left_table = read_metadata_table(ARGS.path_left_table,
                                      ARGS.format_left_table,
