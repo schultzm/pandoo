@@ -395,15 +395,16 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
         '''
         cmd_krk_r = 'kraken-report --db '+dbase
         cmd_grep = "grep -P '\\tS\\t'"
-        cmd_sort = 'sort -k 1 -r'
+        cmd_sort = 'sort -k 1 -g -r'
         cmd_head = 'head -3'
         cmd_full = cmd_kraken+' | '+cmd_krk_r+' | ' +\
                    cmd_grep+' | '+cmd_sort+' | '+cmd_head
-        # sys.stderr.write(cmd_full+'\n')
+        sys.stderr.write(cmd_full+'\n')
         output = check_output(cmd_full, shell=True)
         output2 = output.decode('UTF-8').split('\n')
         kraken = [line.strip().split('\t') for line
                   in [_f for _f in output2 if _f]]
+        print(f"{isolate} {kraken}")
         return kraken
 
     if fmt == 'reads':

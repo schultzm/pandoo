@@ -176,8 +176,8 @@ SUBPARSER_RUN.add_argument('-i', '--isolate_paths', help='Tab-delimited.  \
 SUBPARSER_RUN.add_argument('-o', '--outdir', help='Output directory.',
                            dest='outdir', default=str(f"tmp{uuid.uuid4().hex}"))
 SUBPARSER_RUN.add_argument('-k', '--kraken_db', help='Path to Kraken db.  \
-                           Default=\'/home/linuxbrew/db/kraken//microbekraken\'',
-                           default='/home/linuxbrew/db/kraken//microbekraken',
+                           Default='+os.environ['KRAKEN_DEFAULT_DB']+'\'',
+                           default=os.environ['KRAKEN_DEFAULT_DB'],
                            required=False,
                            dest='kraken_db')
 SUBPARSER_RUN.add_argument('-a', '--abricate_dbs', help='Path to Abricate \
