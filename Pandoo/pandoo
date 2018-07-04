@@ -134,36 +134,35 @@ SUBPARSER_INPUT = SUBPARSERS.add_parser('input', help='Generate input table',
                                         delimited input table.')
 SUBPARSER_INPUT.add_argument('-i', '--isolate_names', help='Path to file \
                              containing isolate names or IDs, one per line.  \
-                             Default=\'isolates.txt\'. Each line contains an \
-                             isolate ID.',
+                             Each line contains an isolate ID.',
                              dest='isolate_names', required=False)
 SUBPARSER_INPUT.add_argument('-a', '--assemblies_dir', help='Root-directory \
-                             containing the assemblies (contigs). Default = \
-                             \'/mnt/seq/MDU/QC/\'', default='/mnt/seq/MDU/QC/',
+                             containing the assemblies (contigs).',
+                             default='/mnt/seq/MDU/QC/',
                              required=False, dest='assemblies_dir')
 SUBPARSER_INPUT.add_argument('-r', '--readsdir', help='Root-directory \
-                             containing the reads.  Default=\
-                             \'/mnt/seq/MDU/READS/\'',
+                             containing the reads.',
                              default='/mnt/seq/MDU/READS/', required=False,
                              dest='readsdir')
 SUBPARSER_INPUT.add_argument('-n', '--assembly_name', help='Name of assembly \
-                             files.  Default=\'contigs.fa\'.',
+                             files.',
                              default='contigs.fa', required=False,
                              dest='assembly_name')
 SUBPARSER_INPUT.add_argument('-w', '--wildcard_expansion_off', help='Switch \
                              off expansion of isolate ID search using \
-                             wildcard? Default is on.', default=True,
+                             wildcard?', default=True,
                              action='store_false', required=False,
                              dest='wildcard_expansion_off')
 SUBPARSER_INPUT.add_argument('-c', '--n_cpus', help='Number of cpus.',
-                           default=cpu_count(), type=int,
-                           required=False, dest='n_cpus')
+                             default=cpu_count(), type=int,
+                             required=False, dest='n_cpus')
 
 #---------------------------- run ------------------------------------
 SUBPARSER_RUN = SUBPARSERS.add_parser('run', help='Run the pandoo \
                                       pipeline', usage='pandoo run ' +
                                       '[options]', description='Run the \
-                                      pandoo pipeline.')
+                                      pandoo pipeline.',
+                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 SUBPARSER_RUN.add_argument('-i', '--isolate_paths', help='Tab-delimited.  \
                            No header. Each line contains(\'\\t\'=tab) \
                            in this order:\
@@ -175,8 +174,7 @@ SUBPARSER_RUN.add_argument('-i', '--isolate_paths', help='Tab-delimited.  \
                            required=False, dest='isolate_paths')
 SUBPARSER_RUN.add_argument('-o', '--outdir', help='Output directory.',
                            dest='outdir', default=str(f"tmp{uuid.uuid4().hex}"))
-SUBPARSER_RUN.add_argument('-k', '--kraken_db', help='Path to Kraken db.  \
-                           Default='+os.environ['KRAKEN_DEFAULT_DB']+'\'',
+SUBPARSER_RUN.add_argument('-k', '--kraken_db', help='Path to Kraken db.',
                            default=os.environ['KRAKEN_DEFAULT_DB'],
                            required=False,
                            dest='kraken_db')
@@ -200,16 +198,15 @@ SUBPARSER_RUN.add_argument('-x', '--abricate_coverage_cutoff',
                            gene \'yes\' if greater than this \
                            value and \'maybe\'\
                            if less than this value or if more than one \
-                           hit is detected. \
-                           Default=100 percent).', default=100, type=int,
+                           hit is detected.', default=100, type=int,
                            required=False,
                            dest='abricate_cov')
 SUBPARSER_RUN.add_argument('-y', '--abricate_identity_cutoff',
                            help='Set the minimum-identity cutoff for \
                            abricate.  Only genes with greater than \
                            or equal to this \
-                           identity will be called \'yes\', else \'maybe\'. \
-                           Default=100 percent.', default=100, type=int,
+                           identity will be called \'yes\', else \'maybe\'.',
+                           default=100, type=int,
                            required=False,
                            dest='abricate_id')
 SUBPARSER_RUN.add_argument('-b', '--ariba_dbs', help='Paths to Ariba dbs \
@@ -225,15 +222,14 @@ SUBPARSER_RUN.add_argument('-c', '--cpus', help='Max number of cpus',
                            default=cpu_count(), type=int,
                            required=False, dest='cpus')
 SUBPARSER_RUN.add_argument('-s', '--model_andi', help='Substitution model.\
-                           \'Raw\', \'JC\', or \'Kimura\'. Default=\'JC\'.',
+                           \'Raw\', \'JC\', or \'Kimura\'.',
                            default='JC', required=False, dest='model_andi')
 SUBPARSER_RUN.add_argument('-t', '--infer_tree_on', help='Switch on tree \
-                           inference using mashtree.pl. Default \'False\'',
+                           inference using mashtree.pl.',
                            default=False, action='store_true', required=False,
                            dest='infer_tree_on')
 SUBPARSER_RUN.add_argument('-r', '--ariba_on', help='Switch on ariba \
-                           minimapping.  \
-                           Default \'False\'', default=False,
+                           minimapping.', default=False,
                            action='store_true',
                            required=False, dest='ariba_on')
 SUBPARSER_RUN.add_argument('-f', '--force_rebuild_summary_files',
@@ -242,8 +238,8 @@ SUBPARSER_RUN.add_argument('-f', '--force_rebuild_summary_files',
                            summary data as requested by this run (e.g., \
                            if ariba is run on a second pass, the ariba \
                            results will not be included in the final summary \
-                           table unless this option is turned on). \
-                           Default is \'False\'', default=False,
+                           table unless this option is turned on).',
+                           default=False,
                            action='store_true',
                            required=False, dest='force_rebuild_summary_files')
 
@@ -254,7 +250,8 @@ SUBPARSER_INPUT = SUBPARSERS.add_parser('merge',help='Merge two metadata \
                                         usage='pandoo merge [options]',
                                         description='Merge two \
                                         metadata tables (e.g., LIMS.xlsx + \
-                                        pandoo.csv).',)
+                                        pandoo.csv).',
+                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 SUBPARSER_INPUT.add_argument('-l', '--path_left_table',
                              help='Path to \'left\' \
                              metadata table (e.g., LIMS metadata).',
@@ -263,14 +260,13 @@ SUBPARSER_INPUT.add_argument('-l', '--path_left_table',
 SUBPARSER_INPUT.add_argument('-f', '--format_left_table',
                              help='Format of left_table.  Either excel \
                              (\'x\'), tab- (\'t\') or comma- (\'c\') \
-                             delimited.  Default=\'x\' for LIMS metadata \
-                             table.',
+                             delimited.',
                              default='x',
                              dest='format_left_table', choices=['x','t','c'],
                              required=False)
 SUBPARSER_INPUT.add_argument('-s', '--skip_left_rows', help='Number of rows \
                              to skip in the left_table \
-                             before reaching the header.  Default=0.  \
+                             before reaching the header.  \
                              Skip 0 rows would \
                              start reading the header on row 1 (NB: 1-based \
                              indexing).', type=int,
@@ -283,8 +279,7 @@ SUBPARSER_INPUT.add_argument('-r', '--path_right_table',
 SUBPARSER_INPUT.add_argument('-t', '--format_right_table',
                              help='Format of right_table.  Either excel \
                              (\'x\'), tab- (\'t\') or comma- (\'c\') \
-                             delimited.  Default=\'c\' for pandoo \
-                             output.csv files',
+                             delimited.',
                              default='c',
                              dest='format_right_table', choices=['x','t','c'],
                              required=False)
@@ -293,13 +288,11 @@ SUBPARSER_INPUT.add_argument('-g', '--skip_right_rows', help='Number of rows \
                              before reaching the header.  \
                              Skip 0 rows would \
                              start reading the header on row 1 (NB: 1-based \
-                             indexing).  0 is default \
-                             to facilitate reading of pandoo tables \
-                             a first-row header.', type=int,
+                             indexing).', type=int,
                              dest='skip_right_rows', default=0, required=False)
 SUBPARSER_INPUT.add_argument('-x', '--suffix_expansion_on',
-                             help='Switch. With suffix expansion on \
-                             (default is off), then xxxx-xxxxxx is the index \
+                             help='Switch. With suffix expansion on, \
+                             then xxxx-xxxxxx is the index \
                              containing the pandas MultiIndexes of \
                              xxxx-xxxxxx-1,xxxx-xxxxxx-2,xxxx-xxxxxx-2-a,\
                              xxxx-xxxxxx-n???).  Switch on if \
