@@ -1305,7 +1305,7 @@ if ARGS.subparser_name == 'merge':
     # Outer join, union (the entire Venn diagram)
     merged_dfs = left_table.join(right_table)
     print('\nMERGED------:\n', merged_dfs, file=sys.stderr)
-    merged_dfs.to_csv(sys.stdout)
+    print(merged_dfs.to_csv())
 
 sys.stderr.write('\nDone. Thankyou for you using ' + VERSION +
            '\nTotal runtime (HRS:MIN:SECS):' +
