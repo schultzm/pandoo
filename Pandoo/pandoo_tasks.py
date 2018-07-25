@@ -393,11 +393,11 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
         This function exists so do_kraken() can be bypassed if there are no
         infiles.
         '''
-        cmd_krk_r = 'kraken-report --db '+dbase
+#         cmd_krk_r = 'kraken-report --db '+dbase
         cmd_grep = "grep -P '\\tS\\t'"
         cmd_sort = 'sort -k 1 -g -r'
         cmd_head = 'head -3'
-        cmd_full = cmd_kraken+' | '+cmd_krk_r+' | ' +\
+        cmd_full = cmd_kraken+' | ' +\
                    cmd_grep+' | '+cmd_sort+' | '+cmd_head
         sys.stderr.write(cmd_full+'\n')
         output = check_output(cmd_full, shell=True)
@@ -422,10 +422,10 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
                 if 'bzip2' in f_fmt:
                     compression = '--bzip2-compressed '
                     break
-
-            cmd_kraken = 'kraken --threads '+str(threads)+' --db '+dbase +\
-                         ' --fastq-input '+compression +\
-                         '--paired --check-names '+infiles
+            cmd_kraken = f"kraken2 --threads {threads} --db {dbase} {compression} --paired --report {outfile} --output - --memory-mapping {infiles} && cat {outfile}"
+#             cmd_kraken = 'kraken --threads '+str(threads)+' --db '+dbase +\
+#                          ' --fastq-input '+compression +\
+#                          '--paired --check-names '+infiles
             kraken = do_kraken(cmd_kraken)
         else:
             # If no read pairs in list, kraken is an empty list.
@@ -434,8 +434,10 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
     if fmt == 'contigs':
         if len(infile) == 1:
             infile = ''.join(infile)
-            cmd_kraken = 'kraken --threads '+str(threads)+' --db '+dbase +\
-                         ' --fasta-input '+infile
+            cmd_kraken = f"kraken2 --threads {threads} --db {dbase} --report {outfile} --output - --memory-mapping {infile} && cat {outfile}"
+# 
+#             cmd_kraken = 'kraken --threads '+str(threads)+' --db '+dbase +\
+#                          ' --fasta-input '+infile
             kraken = do_kraken(cmd_kraken)
         else:
             kraken = []
