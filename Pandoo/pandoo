@@ -45,19 +45,14 @@ import fileinput
 import glob
 from multiprocessing import Pool, cpu_count
 from time import time
-import cProfile
+#import cProfile
 import os
 import uuid
 import shlex
-import shutil
 import string
 import sys
-import numpy as np
 import pandas as pd
-import pkg_resources
-from pathlib import Path
 from subprocess import Popen, PIPE, STDOUT
-from ete3 import Tree
 from Pandoo.__init__ import (__version__,
                       __version_date__,
                       __author__,
@@ -83,12 +78,6 @@ from Pandoo.pandoo_tasks import (calc_threads,
                                       run_legsta,
                                       run_lissero,
                                       relabel_tree_tips)
-from ruffus import (mkdir,
-                    follows,
-                    files,
-                    jobs_limit,
-                    pipeline_run,
-                    pipeline_printout_graph)
 
 # CARALERT NOTIFICATION:
 # Enterobacteriaceae with RMTASE_GENES.
@@ -131,7 +120,8 @@ SUBPARSER_INPUT = SUBPARSERS.add_parser('check', help='Check pipeline \
 SUBPARSER_INPUT = SUBPARSERS.add_parser('input', help='Generate input table',
                                         usage='pandoo input [options]',
                                         description='Generate the tab-\
-                                        delimited input table.')
+                                        delimited input table.',
+                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 SUBPARSER_INPUT.add_argument('-i', '--isolate_names', help='Path to file \
                              containing isolate names or IDs, one per line.  \
                              Each line contains an isolate ID.',
@@ -148,11 +138,11 @@ SUBPARSER_INPUT.add_argument('-n', '--assembly_name', help='Name of assembly \
                              files.',
                              default='contigs.fa', required=False,
                              dest='assembly_name')
-SUBPARSER_INPUT.add_argument('-w', '--wildcard_expansion_off', help='Switch \
-                             off expansion of isolate ID search using \
-                             wildcard?', default=True,
-                             action='store_false', required=False,
-                             dest='wildcard_expansion_off')
+SUBPARSER_INPUT.add_argument('-w', '--wildcard_expansion_on', help='Switch \
+                             on expansion of isolate ID search using \
+                             wildcard?', default=False,
+                             action='store_true', required=False,
+                             dest='wildcard_expansion_on')
 SUBPARSER_INPUT.add_argument('-c', '--n_cpus', help='Number of cpus.',
                              default=cpu_count(), type=int,
                              required=False, dest='n_cpus')
@@ -327,6 +317,7 @@ if ARGS.subparser_name == 'check':
         Return the path of an installed package.
         '''
         #os.X_OK checks if the file is executable
+        import shutil
         return shutil.which(cmd, mode=os.X_OK)
     # These softwares are required to run. Ariba and mashtree are 
     # optional as these modules are optionally run.
@@ -373,7 +364,7 @@ if ARGS.subparser_name == 'input':
         analysis.
         Sometimes the user may request isolates IDs that have multiple hits
         in which case the ARGS.wildcard_expansion switch must be used
-        (default on), or the requested IDs may not exist at all.
+        (default off), or the requested IDs may not exist at all.
         '''
         idtag, folder, wildcard = params
         if wildcard:
@@ -417,7 +408,7 @@ if ARGS.subparser_name == 'input':
                          'Exiting now.\n')
             params_assemblies_finder = [(ID,
                                          os.path.abspath(ARGS.assemblies_dir),
-                                         ARGS.wildcard_expansion_off) for ID
+                                         ARGS.wildcard_expansion_on) for ID
                                         in isolates]
             if ARGS.n_cpus <= 0:
                 sys.exit('Number of CPUs must be greater than or equal to 1')
@@ -584,6 +575,7 @@ if ARGS.subparser_name == 'run':
         Determine the paths to the packaged ariba_dbs, dynamically.
         '''
         if ARGS.ariba_dbs is None:
+            import pkg_resources
             ariba_CARD = pkg_resources \
                          .resource_filename(__name__,
                                             os.path \
@@ -635,8 +627,8 @@ if ARGS.subparser_name == 'run':
         print('\n'.join(PATHS.index[PATHS.index.duplicated()].values),
               file=sys.stderr)
         print('Please remove redundant rows and re-run.', file=sys.stderr)
-        print('Perhaps switch off wildcard expansion (i.e., use the \'-w\' '+ 
-              'option) if using \'pandoo input\'.', file=sys.stderr)
+        print('Perhaps switch off wildcard expansion) if using ' +\
+              'pandoo input\'.', file=sys.stderr)
         sys.exit('Exiting now.\n')
 
 #     # Get out now if the isolate names are misinterpreted as numbers.
@@ -684,8 +676,10 @@ if ARGS.subparser_name == 'run':
                         os.path.abspath(PATHS.loc[isolate,
                                                   header])
                 else:
+                    import numpy as np
                     PATHS.loc[isolate, header] = np.nan
             else:
+                import numpy as np
                 PATHS.loc[isolate, header] = np.nan
 
 
@@ -711,6 +705,12 @@ if ARGS.subparser_name == 'run':
 #     with tempfile.TemporaryDirectory() as tmpfile:
 #         print(f'Temp results going to {tmpfile}')
 # #         OUTBASEDIR = tmpfile
+    from ruffus import (mkdir,
+                    follows,
+                    files,
+                    jobs_limit,
+                    pipeline_run,
+                    pipeline_printout_graph)
     @mkdir([buildpath(OUTBASEDIR, i) for i in PATHS.index.values])
     def create_results_folders():
         '''
@@ -1197,7 +1197,9 @@ if ARGS.subparser_name == 'run':
             '''
             Read in mashtree, rename the tips.
             '''
+            from pathlib import Path
             treestring = Path(infile).read_text()
+            from ete3 import Tree
             tre = Tree(treestring, format=1)
             relabel_tree_tips(tre, outfile, distmat)
             print('Treefile written to '+outfile, file=sys.stderr)
@@ -1280,12 +1282,14 @@ if ARGS.subparser_name == 'merge':
         if ARGS.suffix_expansion_on:
             # Arrays contain the split index e.g. xxxx-xxxxxx-1 goes with
             # xxxx-xxxxxx.
+            import numpy as np
             arrays = [np.array(['-'.join(i.split('-')[:2])
                                 for i in table.index.values]),
                       np.array(table.index.values)]
             table.index = pd.MultiIndex.from_arrays(arrays, names=[u'Left',
                                                                    u'Right'])
         else:
+            import numpy as np
             arrays = [np.array([i for i in table.index.values]),
                       np.array(table.index.values)]
             table.index = pd.MultiIndex.from_arrays(arrays, names=[u'Left',
