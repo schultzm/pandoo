@@ -1126,7 +1126,7 @@ if ARGS.subparser_name == 'run':
             write_pandas_df(outfile,
                             pd.concat([read_pandas_df(infile)
                                        for infile in infile_list],
-                                      axis=0, sort=False))
+                                      axis=0, sort=True))
 
         outfile = buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
                             '_metadataAll.csv')
