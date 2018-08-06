@@ -395,10 +395,10 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
         '''
 #         cmd_krk_r = 'kraken-report --db '+dbase
         cmd_grep = "grep -P '\\tS\\t'"
+        cmd_sed  = "sed -e 's/%//g'"
         cmd_sort = 'sort -k 1 -g -r'
         cmd_head = 'head -3'
-        cmd_full = cmd_kraken+' | ' +\
-                   cmd_grep+' | '+cmd_sort+' | '+cmd_head
+        cmd_full = f'{cmd_kraken} | {cmd_grep} | {cmd_sed} | {cmd_sort} | {cmd_head}'
         sys.stderr.write(cmd_full+'\n')
         output = check_output(cmd_full, shell=True)
         output2 = output.decode('UTF-8').split('\n')
@@ -464,7 +464,7 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
         '''
         Get the Kraken software version and Kraken Database path.
         '''
-        args = shlex.split('kraken -v')
+        args = shlex.split('kraken2 -v')
         proc = Popen(args, stdout=PIPE)
         version = proc.communicate()[0].decode('UTF-8').rstrip().split('\n')[0]
         return {'softwareKrakenVersion_'+fmt: version,
@@ -580,7 +580,7 @@ def run_meningotype(infile, outfile, isolate):
     if len(infile) == 1:
         infile = infile[0]
         # Run meningotype and capture the output from the screen as pandas df.
-        args = shlex.split('meningotype --mlst --porB --bast --finetype ' +
+        args = shlex.split('meningotype --mlst on --porB --bast --finetype ' +
                            infile)
         proc = Popen(args, stdout=PIPE)
         result = proc.communicate()[0].decode('UTF-8')

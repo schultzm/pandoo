@@ -128,11 +128,11 @@ SUBPARSER_INPUT.add_argument('-i', '--isolate_names', help='Path to file \
                              dest='isolate_names', required=False)
 SUBPARSER_INPUT.add_argument('-a', '--assemblies_dir', help='Root-directory \
                              containing the assemblies (contigs).',
-                             default='/mnt/seq/MDU/QC/',
+                             default='/home/seq/MDU/QC/',
                              required=False, dest='assemblies_dir')
 SUBPARSER_INPUT.add_argument('-r', '--readsdir', help='Root-directory \
                              containing the reads.',
-                             default='/mnt/seq/MDU/READS/', required=False,
+                             default='/home/seq/MDU/READS/', required=False,
                              dest='readsdir')
 SUBPARSER_INPUT.add_argument('-n', '--assembly_name', help='Name of assembly \
                              files.',
@@ -299,7 +299,7 @@ ARGS = PARSER.parse_args()
 
 STARTTIME = datetime.now()
 
-VERSION = '\nPando version: ' + __version__ +\
+VERSION = 'Pandoo version: ' + __version__ +\
           '\nVersion date: ' + __version_date__ +\
           '\nauthors: '+ __author__ +\
           '\nCorresponding author email: '+ __author_email__ +\
