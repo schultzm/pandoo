@@ -453,9 +453,7 @@ if ARGS.subparser_name == 'input':
             isolates = list(set(sys.stdin.read().split()))
             build_it(isolates)
         else:
-            sys.exit('\nNothing to do: file \'' +
-                     os.path.abspath(ARGS.isolate_names) +
-                     '\' not found.\n')
+            sys.exit('\nNothing to do.  No input.\n')
     generate_table()
 
 
