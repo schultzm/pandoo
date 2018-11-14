@@ -178,17 +178,14 @@ SUBPARSER_RUN.add_argument('-a', '--abricate_dbs', help='Path to Abricate \
                            pre-formatted using \
                            \'makeblastdb\'.  Example for two databases \
                            (resfinder and plasmidfinder)\
-                           =\"{\'resfinder\': \'/home/tseemann/git/\
+                           =\"{\'ncbi\': \'/home/tseemann/git/\
                            abricate/bin/../db\', \'plasmidfinder\': \
                            \'plasmidfinder\'}\".  Absolute paths required.',
                            default=None, required=False, dest='abricate_dbs')
 SUBPARSER_RUN.add_argument('-x', '--abricate_coverage_cutoff',
                            help='Set the minimum-coverage cutoff for \
-                           abricate.  Call the\
-                           gene \'yes\' if greater than this \
-                           value and \'maybe\'\
-                           if less than this value or if more than one \
-                           hit is detected.', default=100, type=int,
+                           abricate.  Passes hit to abricate_identity_cutoff.',
+                           default=0, type=int,
                            required=False,
                            dest='abricate_cov')
 SUBPARSER_RUN.add_argument('-y', '--abricate_identity_cutoff',
@@ -196,7 +193,7 @@ SUBPARSER_RUN.add_argument('-y', '--abricate_identity_cutoff',
                            abricate.  Only genes with greater than \
                            or equal to this \
                            identity will be called \'yes\', else \'maybe\'.',
-                           default=100, type=int,
+                           default=75, type=int,
                            required=False,
                            dest='abricate_id')
 SUBPARSER_RUN.add_argument('-b', '--ariba_dbs', help='Paths to Ariba dbs \
