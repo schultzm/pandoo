@@ -513,6 +513,8 @@ if ARGS.subparser_name == 'run':
                   os.path.abspath(ARGS.isolate_paths), file=sys.stderr)
             if not sys.stdin.isatty():
                 print('Ignoring input from stdin.', file=sys.stderr)
+        else:
+            sys.exit(f"Cannot find {os.path.abspath(ARGS.isolate_paths)}.")
     elif not sys.stdin.isatty():
         PATHS = get_paths(sys.stdin.read())
         print('Reading input data from stdin.', file=sys.stderr)
@@ -885,7 +887,7 @@ if ARGS.subparser_name == 'run':
                      pd.notnull(PATHS.loc[i, 'pathContigs']) else [],
                      buildpath(OUTBASEDIR, i, 'sistr.txt'), i,
                      buildpath(OUTBASEDIR, i, 'species_id.txt'),
-                     N_THREADS] for i in PATHS.index.values]
+                     1] for i in PATHS.index.values]
     @follows(kraken_sp_id_consensus)
     @files(SISTR_PARAMS)
     def sistr_contigs(infile, outfile, iso, sp_id_file, cpus):
@@ -1203,14 +1205,19 @@ if ARGS.subparser_name == 'run':
     # Run the pipeline
     import tempfile
 
-    def mv_tmp_sqlite(temp_sqlite_db, perm_sqlite_db):
-        try:
-            os.popen(f'mv {temp_sqlite_db} {perm_sqlite_db}')
-            print(f"Moved {temp_sqlite_db} to {perm_sqlite_db}.",
-                  file=sys.stderr)
-        except IOError:
-            print(f'Unable to move {temp_sqlite_db} to {OUTBASEDIR}',
-                  file=sys.stderr)
+#     def mv_tmp_sqlite(temp_sqlite_db, perm_sqlite_db):
+#         try:
+#             pipe = os.popen(f'mv {temp_sqlite_db} {perm_sqlite_db}', 'w')
+#             rc = pipe.close()
+# 
+# #             print(f"Moved {temp_sqlite_db} to {perm_sqlite_db}.",
+# #                   file=sys.stderr)
+#         except IOError:
+#             print(f'Unable to move {temp_sqlite_db} to {OUTBASEDIR}',
+#                   file=sys.stderr)
+# 
+#         print(f"{rc}, is the return code.")
+
 
     with tempfile.TemporaryDirectory() as tmpfile:
         db_name = '.ruffus_history.sqlite'
@@ -1219,10 +1226,10 @@ if ARGS.subparser_name == 'run':
                                       db_name)
         if os.path.exists(perm_sqlite_db):
             os.popen(f'cp {perm_sqlite_db} {temp_sqlite_db}')
-            print(f'Copied {perm_sqlite_db} to {temp_sqlite_db}.',
+            print(f'\nCopied {perm_sqlite_db} to {temp_sqlite_db}.',
                   file=sys.stderr)
         else:
-            print(f'Making new SQLite db at {temp_sqlite_db}',
+            print(f'\nMaking new SQLite db at {temp_sqlite_db}',
                   file=sys.stderr)
         if ARGS.force_rebuild_summary_files:
             remove_file(buildpath(OUTBASEDIR, ISOLATE_PATHS_BASENAME +
@@ -1235,7 +1242,17 @@ if ARGS.subparser_name == 'run':
         else:
             pipeline_run(multiprocess=N_CPU,
                          history_file=temp_sqlite_db)
-        mv_tmp_sqlite(temp_sqlite_db, perm_sqlite_db)
+
+        #move the temp sqlite db back to the NFS        
+        pipe = os.popen(f'mv {temp_sqlite_db} {perm_sqlite_db}', 'w')
+        rc = pipe.close()
+        if rc is not None and rc >> 8:
+            print("\nCouldn't move the temp sqlite db back to the NFS from tmp.")
+        else:
+            print(f"\nMoved {temp_sqlite_db} to {perm_sqlite_db}",
+                  file = sys.stderr)
+# 
+#         mv_tmp_sqlite(temp_sqlite_db, perm_sqlite_db)
         print('\nLength of infile list as string: ' +
               str(len(', '.join([buildpath(OUTBASEDIR, i)
                                  for i in PATHS.index.values]))), file=sys.stderr)
