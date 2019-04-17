@@ -139,7 +139,11 @@ def create_pandas_df(dictionary, isolate):
     '''
     Creates a Pandas dataframe from a dictionary of results.
     '''
-    return pd.DataFrame([dictionary], index=[isolate])
+    if type(dictionary) == list:
+        num_isolate = len(dictionary)
+        return pd.DataFrame(dictionary, index=[isolate]*num_isolate)
+    else:
+        return pd.DataFrame([dictionary], index=[isolate])
 
 
 def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
@@ -489,9 +493,10 @@ def run_mlst(assembly, outfile, isolate, species):
             mlst_formatted_dict['MLST_Locus'+str(k)] = output[i]
             k += 1
         return mlst_formatted_dict
-
+    mlst_df_collect = []
     if len(assembly) == 0:
         mlst_formatted_dict = {}
+        mlst_df_collect.append(mlst_formatted_dict)
 
     if len(assembly) == 1:
         assembly = assembly[0]
@@ -502,13 +507,18 @@ def run_mlst(assembly, outfile, isolate, species):
             elif species.split(' ')[0] in FORCE_MLST_SCHEME:
                 sp_scheme = FORCE_MLST_SCHEME[species.split(' ')[0]]
         if sp_scheme is not None:
-            cmd = 'mlst --scheme '+sp_scheme+' --quiet ' +\
-                   assembly
-            args_mlst = shlex.split(cmd)
-            proc = Popen(args_mlst, stdout=PIPE)
-            output = proc.communicate()[0].decode('UTF-8')
-            out = output.rstrip().split('\t')[1:]
-            mlst_formatted_dict = parse_MLST_output(out)
+            if type(sp_scheme) == str:
+                sp_scheme = [sp_scheme]
+
+            for _sp_scheme in sp_scheme:
+                cmd = 'mlst --scheme '+_sp_scheme+' --quiet ' +\
+                       assembly
+                args_mlst = shlex.split(cmd)
+                proc = Popen(args_mlst, stdout=PIPE)
+                output = proc.communicate()[0].decode('UTF-8')
+                out = output.rstrip().split('\t')[1:]
+                mlst_formatted_dict = parse_MLST_output(out)
+                mlst_df_collect.append(mlst_formatted_dict)
         else:
             cmd = 'mlst --quiet '+assembly
             args_mlst = shlex.split(cmd)
@@ -516,6 +526,7 @@ def run_mlst(assembly, outfile, isolate, species):
             output = proc.communicate()[0].decode('UTF-8')
             out = output.rstrip().split('\t')[1:]
             mlst_formatted_dict = parse_MLST_output(out)
+            mlst_df_collect.append(mlst_formatted_dict)
 
     def get_mlst_version():
         '''
@@ -523,12 +534,12 @@ def run_mlst(assembly, outfile, isolate, species):
         '''
         args = shlex.split('mlst -v')
         proc = Popen(args, stdout=PIPE)
-        version = proc.communicate()[0].decode('UTF-8').rstrip().split('\n')[0]
+        version = proc.communicate()[0].decode('UTF-8').rstrip().split('\t')[0]
         return {'softwareMLSTversion': version}
 
-    mlst_version = create_pandas_df(get_mlst_version(), isolate)
-    mlst_result = create_pandas_df(mlst_formatted_dict, isolate)
-    mlst_df = pd.concat([mlst_result, mlst_version], axis=1)
+    mlst_version = get_mlst_version()['softwareMLSTversion']
+    mlst_df = create_pandas_df(mlst_df_collect, isolate)
+    mlst_df.loc[:,'softwareMLSTversion'] = mlst_version
     write_pandas_df(outfile, mlst_df)
 
 
@@ -843,7 +854,8 @@ def run_mashtree(infiles, outfile, treefile, cpus):
 
 
 # From https://github.com/tseemann/mlst/blob/master/db/species_scheme_map.tab
-FORCE_MLST_SCHEME = {"Acinetobacter baumannii": "abaumannii_2", # i.e., Pasteur
+FORCE_MLST_SCHEME = {"Acinetobacter baumannii": ["abaumannii_2", # i.e., Pasteur
+                                                 "abaumannii"],
                      "Achromobacter": "achromobacter",
                      "Aeromonas": "aeromonas",
                      "Aspergillus afumigatus": "afumigatus",
@@ -866,7 +878,8 @@ FORCE_MLST_SCHEME = {"Acinetobacter baumannii": "abaumannii_2", # i.e., Pasteur
                      "Clostridium botulinum": "cbotulinum",
                      "Campylobacter concisus": "cconcisus",
                      "Peptoclostridium difficile": "cdifficile",
-                     "Clostridium difficile": "cdifficile",
+                     "Clostridium difficile": ["cdifficile",
+                                               "cdifficile_2"],
                      "Corynebacterium diphtheriae": "cdiphtheriae",
                      "Campylobacter fetus": "cfetus",
                      "Candida glabrata": "cglabrata",
@@ -885,7 +898,7 @@ FORCE_MLST_SCHEME = {"Acinetobacter baumannii": "abaumannii_2", # i.e., Pasteur
                      "Candida tropicalis": "ctropicalis",
                      "Campylobacter upsaliensis": "cupsaliensis",
                      "Enterobacter cloacae": "ecloacae",
-                     "Escherichia": "ecoli",
+                     "Escherichia": ["ecoli","ecoli_2"],
                      "Shigella": "ecoli",
                      "Enterococcus faecalis": "efaecalis",
                      "Enterococcus faecium": "efaecium",
@@ -899,7 +912,7 @@ FORCE_MLST_SCHEME = {"Acinetobacter baumannii": "abaumannii_2", # i.e., Pasteur
                      "Klebsiella pneumoniae": "kpneumoniae",
                      "Lactobacillus casei": "lcasei",
                    # "Legionella": "legionella", #STOP. Omp locus problem
-                     "Leptospira": "leptospira",
+                     "Leptospira": ["leptospira","leptospira_2","leptospira_3"],
                      "Listeria monocytogenes": "lmonocytogenes",
                      "Lactobacillus salivarius": "lsalivarius",
                      "Mycobacterium abscessus": "mabscessus",
@@ -933,7 +946,7 @@ FORCE_MLST_SCHEME = {"Acinetobacter baumannii": "abaumannii_2", # i.e., Pasteur
                      "Staphylococcus pseudintermedius": "spseudintermedius",
                      "Streptococcus pyogenes": "spyogenes",
                      "Streptococcus suis": "ssuis",
-                     "Streptococcus thermophilus": "sthermophilus",
+                     "Streptococcus thermophilus": ["sthermophilus","sthermophilus_2"],
                      "Streptomyces": "streptomyces",
                      "Streptococcus uberis": "suberis",
                      "Streptococcus equi": "szooepidemicus",
