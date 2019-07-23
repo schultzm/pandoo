@@ -384,7 +384,7 @@ if ARGS.subparser_name == 'input':
         Use glob to find the read pairs.
         '''
         # Reads is a list. If no reads found, reads is an empty list.
-        reads = '\t'.join(glob.glob(os.path.join(folder, idtag, '*.gz')))
+        reads = '\t'.join(sorted(glob.glob(os.path.join(folder, idtag, '*.gz'))))
         if len(reads) == 0:
             return '\t'
         else:
