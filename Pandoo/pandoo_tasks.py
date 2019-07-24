@@ -180,7 +180,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
                       ' > '+outfile
         os.system(cmd)
         # Here we open the abricate results
-        ab_data = pd.read_table(outfile, sep='\t', header=0)
+        ab_data = pd.read_csv(outfile, sep='\t', header=0)
         print(ab_data, file=sys.stderr)
         ab_results_df_list = []
         ab_results_simplified = defaultdict(list)
@@ -751,7 +751,7 @@ def run_ariba(infiles, outfile, isolate, dbase, result_basedir):
             print(cmd_sum, file=sys.stderr)
             os.system(cmd_sum)
             ariba_summary_dict = {}
-            ariba_data = pd.read_table(os.path.join(result_basedir,
+            ariba_data = pd.read_csv(os.path.join(result_basedir,
                                                     'ariba_summary.csv'),
                                        sep=',', header=0)
             col_chunks = list(set([i.split('.')[0]
