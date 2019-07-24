@@ -1278,9 +1278,9 @@ if ARGS.subparser_name == 'merge':
         '''
         if os.path.exists(os.path.abspath(table_file)):
             if format == 'c':
-                return pd.read_csv(table_file, skiprows=nrows, index_col=0)
+                return pd.read_csv(table_file, sep=",", skiprows=nrows, index_col=0)
             elif format == 't':
-                return pd.read_table(table_file, skiprows=nrows, index_col=0)
+                return pd.read_csv(table_file, sep="\t", skiprows=nrows, index_col=0)
             if format == 'x':
                 return pd.read_excel(table_file, skiprows=nrows, index_col=0)
         else:
