@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 __name__            = 'paando'
-__version__         = '0.2.27'
-__version_date__    = 'Wed 24th July, 2019 (Miller has left the building)'
+__version__         = '0.3.0'
+__version_date__    = 'Wed 14th August, 2019 (Royce Victor)'
 __description__     = ('Pandoo is a bioinformatics tool for for ' +\
                        'exploring and characterising bacterial genome ' +\
-                       'data.  Input is paired-end reads and assemblies.  ' +\
+                       'data.  Input is paired-end reads and/or assemblies.  ' +\
                        'Output is an NJ tree/dendrogram inferred from the ' +\
                        'assemblies (using mashtree) and a table of results ' +\
                        '(species ID, mlst, antimicrobial resistance genes, ' +\
@@ -22,4 +22,4 @@ __author_email__    = 'dr.mark.schultz@gmail.com'
 __github_username__ = 'schultzm'
 __download_url__    = 'https://github.com/schultzm/pandoo/zipball/master'
 __license__         = 'AGPL-3.0'
-__all__             = ['paando']
+__all__             = []

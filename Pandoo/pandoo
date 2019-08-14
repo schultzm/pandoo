@@ -184,8 +184,9 @@ SUBPARSER_RUN.add_argument('-a', '--abricate_dbs', help='Path to Abricate \
                            default=None, required=False, dest='abricate_dbs')
 SUBPARSER_RUN.add_argument('-x', '--abricate_coverage_cutoff',
                            help='Set the minimum-coverage cutoff for \
-                           abricate.  Passes hit to abricate_identity_cutoff.',
-                           default=0, type=int,
+                           abricate.  Hits passing through this filter then go \
+                           to abricate_identity_cutoff.',
+                           default=95, type=int,
                            required=False,
                            dest='abricate_cov')
 SUBPARSER_RUN.add_argument('-y', '--abricate_identity_cutoff',
@@ -208,9 +209,6 @@ SUBPARSER_RUN.add_argument('-b', '--ariba_dbs', help='Paths to Ariba dbs \
 SUBPARSER_RUN.add_argument('-c', '--cpus', help='Max number of cpus',
                            default=cpu_count(), type=int,
                            required=False, dest='cpus')
-SUBPARSER_RUN.add_argument('-s', '--model_andi', help='Substitution model.\
-                           \'Raw\', \'JC\', or \'Kimura\'.',
-                           default='JC', required=False, dest='model_andi')
 SUBPARSER_RUN.add_argument('-t', '--infer_tree_on', help='Switch on tree \
                            inference using mashtree.pl.',
                            default=False, action='store_true', required=False,

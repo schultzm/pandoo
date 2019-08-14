@@ -172,7 +172,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
             print('Using pre-packaged abricate database ' + dbase[0],
                   file=sys.stderr)
             cmd = 'abricate --db ' + dbase[0] + \
-                  ' --minid ' + str(75) + ' --mincov ' + str(0) + ' ' + infile + \
+                  ' --minid ' + str(75) + ' --mincov ' + str(95) + ' ' + infile + \
                   ' > ' + outfile
         else:
             if not os.path.exists(dbase[1][0]):
@@ -181,7 +181,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
                 print('Using custom db ' + dbase[0] + ' at ' + dbase[1][0],
                       file=sys.stderr)
                 cmd = 'abricate --db ' + dbase[0] + ' --datadir ' + dbase[1][0] + \
-                      ' --minid ' + str(75) + ' --mincov ' + str(0) + ' ' + infile + \
+                      ' --minid ' + str(75) + ' --mincov ' + str(95) + ' ' + infile + \
                       ' > ' + outfile
         os.system(cmd)
         # Here we open the abricate results
