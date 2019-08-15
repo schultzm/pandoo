@@ -41,5 +41,8 @@ setup(
                         'numpy>=1.13.1',
                         'pandas>=0.20.3',
                         'ete3>=3.0.0b35',
-                        'ruffus>=2.6.3']
+                        'ruffus>=2.6.3',
+                        'biopython>=1.74',
+                        'matplotlib>=>=3.1.0',
+],
     )

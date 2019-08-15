@@ -181,7 +181,9 @@ SUBPARSER_RUN.add_argument('-a', '--abricate_dbs', help='Path to Abricate \
                            =\"{\'ncbi\': \'/home/tseemann/git/\
                            abricate/bin/../db\', \'plasmidfinder\': \
                            \'plasmidfinder\'}\".  Absolute paths required.',
-                           default=None, required=False, dest='abricate_dbs')
+                           default="{'ncbi': '/home/tseemann/git/abricate/bin/../db\'}",
+                           required=False,
+                           dest='abricate_dbs')
 SUBPARSER_RUN.add_argument('-x', '--abricate_coverage_cutoff',
                            help='Set the minimum-coverage cutoff for \
                            abricate.  Hits passing through this filter then go \
@@ -981,7 +983,7 @@ if ARGS.subparser_name == 'run':
                                   'pathReads2']]
         df3 = df2.fillna('No input file')
         dfs.append(df3)
-        df4 = pd.concat(dfs, axis=1)
+        df4 = pd.concat(dfs, axis=1, sort=True)
         write_pandas_df(outfile_df, df4) ## complex outfile
 
     RESULT_FILES_PER_ISO = [[buildpath(OUTBASEDIR, i),

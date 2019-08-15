@@ -172,7 +172,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
             print('Using pre-packaged abricate database ' + dbase[0],
                   file=sys.stderr)
             cmd = 'abricate --db ' + dbase[0] + \
-                  ' --minid ' + str(75) + ' --mincov ' + str(95) + ' ' + infile + \
+                  ' --minid ' + str(identity) + ' --mincov ' + str(coverage) + ' ' + infile + \
                   ' > ' + outfile
         else:
             if not os.path.exists(dbase[1][0]):
@@ -181,7 +181,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
                 print('Using custom db ' + dbase[0] + ' at ' + dbase[1][0],
                       file=sys.stderr)
                 cmd = 'abricate --db ' + dbase[0] + ' --datadir ' + dbase[1][0] + \
-                      ' --minid ' + str(75) + ' --mincov ' + str(95) + ' ' + infile + \
+                      ' --minid ' + str(identity) + ' --mincov ' + str(coverage) + ' ' + infile + \
                       ' > ' + outfile
         os.system(cmd)
         # Here we open the abricate results
@@ -597,7 +597,7 @@ def run_meningotype(infile, outfile, isolate):
     if len(infile) == 1:
         infile = infile[0]
         # Run meningotype and capture the output from the screen as pandas df.
-        args = shlex.split('meningotype --mlst on --porB --bast --finetype ' +
+        args = shlex.split('meningotype --mlst --porB --bast --finetype ' +
                            infile)
         proc = Popen(args, stdout=PIPE)
         result = proc.communicate()[0].decode('UTF-8')
@@ -690,7 +690,7 @@ def run_legsta(infile, outfile, isolate):
 
     # Capture all dfs into a single df and then write to file.
     legst_version = create_pandas_df(get_legsta_version(), isolate)
-    legst_df = pd.concat([legst_result, legst_version], axis=1)
+    legst_df = pd.concat([legst_result, legst_version], axis=1, sort=True)
     legst_df.replace(to_replace='-', value='', inplace=True)
     write_pandas_df(outfile, legst_df)
 
