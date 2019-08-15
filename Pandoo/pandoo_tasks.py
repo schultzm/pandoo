@@ -493,7 +493,7 @@ def run_mlst(assembly, outfile, isolate, species):
                                'MLST_ST': output[1]}
         k = 1
         for i in range(2, ncol):
-            mlst_formatted_dict['MLST_Locus' + str(k)] = output[i]
+            mlst_formatted_dict[f"MLST_{output[0]}_Locus_{str(k)}"] = output[i]
             k += 1
         return mlst_formatted_dict
 
