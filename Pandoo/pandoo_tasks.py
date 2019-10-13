@@ -90,7 +90,7 @@ def get_paths(infile):
     n_columns = None
     while True:
         try:
-            # Read in the infile as text as some isolate names are numeric, 
+            # Read in the infile as text as some isolate names are numeric,
             # which causes problems downstream if the index is not str.
             contents = Path(infile).read_text()
             df1 = pd.read_csv(StringIO(contents), header=None, sep='\t',
@@ -165,7 +165,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
         infile = infile[0]
         # The full path to the database comes in under 'dbase' variable, which
         # allows the user to point abricate to their own database.  When the
-        # default dbs are being used, the end of the dbase path will be 
+        # default dbs are being used, the end of the dbase path will be
         # 'default'.  Here we extract 'default' as a keyword which allows
         # correct building of the abricate run command.
         if os.path.split(dbase[1][0])[1] == 'default':
@@ -287,7 +287,7 @@ def run_abricate(infile, outfile, outfile_simple, isolate, dbase, coverage,
     # Bind the version and the results dataframes.
     version_df = create_pandas_df(get_abricate_version(), isolate)
     abricate_df = pd.concat([abricate_result, version_df], axis=1)
-    # NB: This writing of the outfile will overwrite the full 
+    # NB: This writing of the outfile will overwrite the full
     # abricate results table as it was written when redirected from stdout.
     # write both simple ('yes', 'maybe') and complex ('near raw') dataframes.
     write_pandas_df(outfile, abricate_df)
@@ -347,7 +347,7 @@ def run_seqtk_fqchk(infiles, outfile, isolate):
     if len(infiles) == 0:
         metrics = {}
     else:
-        os.system('seqtk fqchk ' + ' '.join(infiles) + ' > ' + outfile)
+        os.system('seqtk fqchk -q0' + ' '.join(infiles) + ' > ' + outfile)
         df_all = pd.read_csv(outfile, index_col=0, sep='\t',
                              skiprows=1)
         with open(outfile, 'r') as outf:
@@ -440,7 +440,7 @@ def run_kraken(infile, outfile, fmt, isolate, dbase, threads):
         if len(infile) == 1:
             infile = ''.join(infile)
             cmd_kraken = f"kraken2 --threads {threads} --db {dbase} --report {outfile} --output - --memory-mapping {infile} && cat {outfile}"
-            # 
+            #
             #             cmd_kraken = 'kraken --threads '+str(threads)+' --db '+dbase +\
             #                          ' --fasta-input '+infile
             kraken = do_kraken(cmd_kraken)
